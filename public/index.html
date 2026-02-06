@@ -537,18 +537,29 @@
           labels: times,
           datasets: [{
             label: 'Altitude (m)',
-            data: [],
+            data: altitudes,
             borderColor: '#4ec9b0',
             backgroundColor: 'rgba(78, 201, 176, 0.1)',
             tension: 0.4,
-            yAxisID: 'y'
+            yAxisID: 'y',
+            pointRadius: 0
           }, {
             label: 'Velocidade (km/h)',
-            data: [],
+            data: speeds,
             borderColor: '#569cd6',
             backgroundColor: 'rgba(86, 156, 214, 0.1)',
             tension: 0.4,
-            yAxisID: 'y1'
+            yAxisID: 'y1',
+            pointRadius: 0
+          }, {
+            label: 'Posição Atual',
+            data: [],
+            borderColor: '#f48771',
+            backgroundColor: '#f48771',
+            pointRadius: 8,
+            pointHoverRadius: 10,
+            showLine: false,
+            yAxisID: 'y'
           }]
         },
         options: {
@@ -624,9 +635,6 @@
     function startAnimation() {
       if (currentIndex >= flightChart.altitudes.length) {
         currentIndex = 0;
-        flightChart.data.datasets[0].data = [];
-        flightChart.data.datasets[1].data = [];
-        flightChart.update('none');
       }
 
       playBtn.textContent = '⏸ Pause';
@@ -634,13 +642,17 @@
 
       animationInterval = setInterval(() => {
         if (currentIndex < flightChart.altitudes.length) {
-          flightChart.data.datasets[0].data.push(flightChart.altitudes[currentIndex]);
-          flightChart.data.datasets[1].data.push(flightChart.speeds[currentIndex]);
+          flightChart.data.datasets[2].data = [{
+            x: currentIndex,
+            y: flightChart.altitudes[currentIndex]
+          }];
           flightChart.update('none');
           currentIndex++;
         } else {
           stopAnimation();
           playBtn.textContent = '🔄 Replay';
+          flightChart.data.datasets[2].data = [];
+          flightChart.update('none');
         }
       }, speed);
     }
