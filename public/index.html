@@ -575,11 +575,11 @@
             order: 1
           }, {
             label: 'Posição Atual',
-            data: [],
+            data: new Array(altitudes.length).fill(null),
             borderColor: '#ffc107',
             backgroundColor: '#ffc107',
-            pointRadius: 8,
-            pointHoverRadius: 10,
+            pointRadius: 0,
+            pointHoverRadius: 0,
             showLine: false,
             yAxisID: 'y',
             order: 0
@@ -676,16 +676,21 @@
 
       animationInterval = setInterval(() => {
         if (currentIndex < flightChart.altitudes.length) {
-          flightChart.data.datasets[3].data = [{
-            x: currentIndex,
-            y: flightChart.altitudes[currentIndex]
-          }];
+          const markerData = new Array(flightChart.altitudes.length).fill(null);
+          markerData[currentIndex] = flightChart.altitudes[currentIndex];
+
+          flightChart.data.datasets[3].data = markerData;
+          flightChart.data.datasets[3].pointRadius = markerData.map((v, i) =>
+            i === currentIndex ? 8 : 0
+          );
+
           flightChart.update('none');
           currentIndex++;
         } else {
           stopAnimation();
           playBtn.textContent = '🔄 Replay';
-          flightChart.data.datasets[3].data = [];
+          flightChart.data.datasets[3].data = new Array(flightChart.altitudes.length).fill(null);
+          flightChart.data.datasets[3].pointRadius = 0;
           flightChart.update('none');
         }
       }, speed);
