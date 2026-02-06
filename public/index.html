@@ -768,8 +768,6 @@
         opacity: 0.7
       }).addTo(flightMap);
 
-      flightMap.fitBounds(flightPath.getBounds());
-
       const startIcon = L.divIcon({
         className: 'start-marker',
         html: '<div style="background: #4ec9b0; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white;"></div>',
@@ -793,7 +791,8 @@
 
       setTimeout(() => {
         flightMap.invalidateSize();
-      }, 100);
+        flightMap.fitBounds(flightPath.getBounds(), { padding: [50, 50] });
+      }, 200);
     }
 
     function calculateDistance(lat1, lon1, lat2, lon2) {
