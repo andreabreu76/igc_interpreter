@@ -790,6 +790,10 @@
       L.marker([lastFix.latitude, lastFix.longitude], { icon: endIcon })
         .bindPopup('Fim')
         .addTo(flightMap);
+
+      setTimeout(() => {
+        flightMap.invalidateSize();
+      }, 100);
     }
 
     function calculateDistance(lat1, lon1, lat2, lon2) {
