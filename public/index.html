@@ -328,7 +328,7 @@
       </div>
       <div class="chart-container" id="chartContent">
         <div class="chart-controls">
-          <button class="play-btn" id="playBtn" disabled>▶ Play</button>
+          <button class="play-btn" id="playBtn" disabled>Play</button>
           <div class="speed-control">
             <label>Velocidade:</label>
             <select id="speedSelect">
@@ -671,7 +671,7 @@
         currentIndex = 0;
       }
 
-      playBtn.textContent = '⏸ Pause';
+      playBtn.textContent = 'Pause';
       const speed = parseInt(speedSelect.value);
 
       animationInterval = setInterval(() => {
@@ -688,7 +688,7 @@
           currentIndex++;
         } else {
           stopAnimation();
-          playBtn.textContent = '🔄 Replay';
+          playBtn.textContent = 'Replay';
           flightChart.data.datasets[3].data = new Array(flightChart.altitudes.length).fill(null);
           flightChart.data.datasets[3].pointRadius = 0;
           flightChart.update('none');
@@ -701,7 +701,7 @@
         clearInterval(animationInterval);
         animationInterval = null;
         if (currentIndex < flightChart?.altitudes?.length) {
-          playBtn.textContent = '▶ Play';
+          playBtn.textContent = 'Play';
         }
       }
     }
