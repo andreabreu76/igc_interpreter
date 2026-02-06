@@ -526,18 +526,18 @@
         return time.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
       });
 
-      const altitudes = fixes.map(f => f.gpsAltitude || 0);
+      const altitudesGPS = fixes.map(f => f.gpsAltitude || 0);
+      const altitudesBaro = fixes.map(f => f.pressureAltitude || f.gpsAltitude || 0);
 
-      const speeds = fixes.map((f, i) => {
-        if (i === 0) return 0;
-        const prev = fixes[i - 1];
-        const dist = calculateDistance(prev.latitude, prev.longitude, f.latitude, f.longitude);
-        const timeDiff = (new Date(f.timestamp) - new Date(prev.timestamp)) / 1000;
-        return timeDiff > 0 ? (dist / timeDiff) * 3600 : 0;
+      const minAlt = Math.min(...altitudesGPS, ...altitudesBaro);
+      const maxAlt = Math.max(...altitudesGPS, ...altitudesBaro);
+      const range = maxAlt - minAlt;
+
+      const ground = altitudesGPS.map((alt, i) => {
+        const baseGround = Math.max(0, minAlt - range * 0.1);
+        const variation = Math.sin(i / fixes.length * Math.PI * 3) * (range * 0.05);
+        return baseGround + variation;
       });
-
-      const minAlt = Math.min(...altitudes);
-      const ground = fixes.map(() => Math.max(0, minAlt - 100));
 
       flightChart = new Chart(ctx, {
         type: 'line',
@@ -546,38 +546,39 @@
           datasets: [{
             label: 'Ground',
             data: ground,
-            borderColor: '#8B4513',
+            borderColor: '#CD853F',
             backgroundColor: '#8B4513',
             fill: 'origin',
-            tension: 0.1,
+            tension: 0.2,
             yAxisID: 'y',
             pointRadius: 0,
+            borderWidth: 1,
             order: 3
           }, {
-            label: 'Altitude GPS (m)',
-            data: altitudes,
-            borderColor: '#dc3545',
+            label: 'Alt (Baro)',
+            data: altitudesBaro,
+            borderColor: '#4A90E2',
             backgroundColor: 'transparent',
             fill: false,
-            tension: 0.1,
+            tension: 0.2,
             yAxisID: 'y',
             pointRadius: 0,
             borderWidth: 2,
             order: 2
           }, {
-            label: 'Velocidade (km/h)',
-            data: speeds,
-            borderColor: '#569cd6',
+            label: 'Alt',
+            data: altitudesGPS,
+            borderColor: '#E74C3C',
             backgroundColor: 'transparent',
-            tension: 0.1,
-            yAxisID: 'y1',
+            fill: false,
+            tension: 0.2,
+            yAxisID: 'y',
             pointRadius: 0,
             borderWidth: 2,
-            fill: false,
             order: 1
           }, {
             label: 'Posição Atual',
-            data: new Array(altitudes.length).fill(null),
+            data: new Array(altitudesGPS.length).fill(null),
             borderColor: '#ffc107',
             backgroundColor: '#ffc107',
             pointRadius: 0,
@@ -616,23 +617,11 @@
               position: 'left',
               title: {
                 display: true,
-                text: 'Altitude (m)',
-                color: '#4ec9b0'
+                text: 'Height (m)',
+                color: '#858585'
               },
               ticks: { color: '#858585' },
               grid: { color: '#3e3e42' }
-            },
-            y1: {
-              type: 'linear',
-              display: true,
-              position: 'right',
-              title: {
-                display: true,
-                text: 'Velocidade (km/h)',
-                color: '#569cd6'
-              },
-              ticks: { color: '#858585' },
-              grid: { display: false }
             }
           },
           plugins: {
@@ -643,8 +632,7 @@
         }
       });
 
-      flightChart.altitudes = altitudes;
-      flightChart.speeds = speeds;
+      flightChart.altitudes = altitudesGPS;
       currentIndex = 0;
       playBtn.disabled = false;
     }
