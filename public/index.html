@@ -507,7 +507,11 @@
 
         const startTime = new Date(summary.startPosition.time);
         document.getElementById('startTime').textContent =
-          startTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+          startTime.toLocaleTimeString('pt-BR', {
+            hour: '2-digit',
+            minute: '2-digit',
+            timeZone: 'UTC'
+          });
       }
 
       if (summary.endPosition) {
@@ -517,7 +521,11 @@
 
         const endTime = new Date(summary.endPosition.time);
         document.getElementById('endTime').textContent =
-          endTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+          endTime.toLocaleTimeString('pt-BR', {
+            hour: '2-digit',
+            minute: '2-digit',
+            timeZone: 'UTC'
+          });
       }
 
       document.getElementById('maxAltitude').innerHTML =
@@ -543,7 +551,11 @@
 
       const times = fixes.map(f => {
         const time = new Date(f.timestamp);
-        return time.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        return time.toLocaleTimeString('pt-BR', {
+          hour: '2-digit',
+          minute: '2-digit',
+          timeZone: 'UTC'
+        });
       });
 
       const altitudesGPS = fixes.map(f => f.gpsAltitude || 0);
