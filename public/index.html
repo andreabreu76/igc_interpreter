@@ -396,19 +396,6 @@
       <div class="chart-container" id="chartContent">
         <div class="chart-controls">
           <button class="play-btn" id="playBtn" disabled>Play</button>
-          <div class="speed-control">
-            <label>Velocidade:</label>
-            <select id="speedSelect">
-              <option value="50">1x</option>
-              <option value="10">5x</option>
-              <option value="5">10x</option>
-              <option value="2">25x</option>
-              <option value="1" selected>50x</option>
-              <option value="0.5">100x</option>
-              <option value="0.25">200x</option>
-              <option value="0.1">500x</option>
-            </select>
-          </div>
         </div>
         <canvas id="flightChart"></canvas>
       </div>
@@ -444,7 +431,6 @@
     const loading = document.getElementById('loading');
     const errorDiv = document.getElementById('error');
     const playBtn = document.getElementById('playBtn');
-    const speedSelect = document.getElementById('speedSelect');
 
     let flightChart = null;
     let flightData = null;
@@ -478,12 +464,6 @@
     });
 
     playBtn.addEventListener('click', toggleAnimation);
-    speedSelect.addEventListener('change', () => {
-      if (animationInterval) {
-        stopAnimation();
-        startAnimation();
-      }
-    });
 
     uploadArea.addEventListener('click', () => fileInput.click());
     fileInput.addEventListener('change', handleFileSelect);
@@ -820,7 +800,7 @@
       }
 
       playBtn.textContent = 'Pause';
-      const speed = parseFloat(speedSelect.value);
+      const speed = 0.1;
 
       animationInterval = setInterval(() => {
         if (currentIndex < flightChart.altitudes.length) {
