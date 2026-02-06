@@ -520,10 +520,10 @@
       }
 
       const ctx = document.getElementById('flightChart').getContext('2d');
-      const startTime = new Date(fixes[0].timestamp);
 
       const times = fixes.map(f => {
-        return ((new Date(f.timestamp) - startTime) / 1000 / 60).toFixed(1);
+        const time = new Date(f.timestamp);
+        return time.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
       });
 
       const altitudes = fixes.map(f => f.gpsAltitude || 0);
@@ -536,35 +536,53 @@
         return timeDiff > 0 ? (dist / timeDiff) * 3600 : 0;
       });
 
+      const minAlt = Math.min(...altitudes);
+      const ground = fixes.map(() => Math.max(0, minAlt - 100));
+
       flightChart = new Chart(ctx, {
         type: 'line',
         data: {
           labels: times,
           datasets: [{
-            label: 'Altitude (m)',
-            data: altitudes,
-            borderColor: '#4ec9b0',
-            backgroundColor: 'rgba(78, 201, 176, 0.1)',
-            tension: 0.4,
+            label: 'Ground',
+            data: ground,
+            borderColor: '#8B4513',
+            backgroundColor: '#8B4513',
+            fill: 'origin',
+            tension: 0.1,
             yAxisID: 'y',
-            pointRadius: 0
+            pointRadius: 0,
+            order: 3
+          }, {
+            label: 'Altitude GPS (m)',
+            data: altitudes,
+            borderColor: '#dc3545',
+            backgroundColor: 'rgba(220, 53, 69, 0.3)',
+            fill: 'origin',
+            tension: 0.1,
+            yAxisID: 'y',
+            pointRadius: 0,
+            order: 2
           }, {
             label: 'Velocidade (km/h)',
             data: speeds,
             borderColor: '#569cd6',
-            backgroundColor: 'rgba(86, 156, 214, 0.1)',
-            tension: 0.4,
+            backgroundColor: 'rgba(86, 156, 214, 0.2)',
+            tension: 0.1,
             yAxisID: 'y1',
-            pointRadius: 0
+            pointRadius: 0,
+            fill: false,
+            order: 1
           }, {
             label: 'Posição Atual',
             data: [],
-            borderColor: '#f48771',
-            backgroundColor: '#f48771',
+            borderColor: '#ffc107',
+            backgroundColor: '#ffc107',
             pointRadius: 8,
             pointHoverRadius: 10,
             showLine: false,
-            yAxisID: 'y'
+            yAxisID: 'y',
+            order: 0
           }]
         },
         options: {
@@ -580,12 +598,13 @@
               display: true,
               title: {
                 display: true,
-                text: 'Tempo (minutos)',
+                text: 'Horário',
                 color: '#858585'
               },
               ticks: {
                 color: '#858585',
-                maxTicksLimit: 10
+                maxTicksLimit: 15,
+                autoSkip: true
               },
               grid: { color: '#3e3e42' }
             },
@@ -657,7 +676,7 @@
 
       animationInterval = setInterval(() => {
         if (currentIndex < flightChart.altitudes.length) {
-          flightChart.data.datasets[2].data = [{
+          flightChart.data.datasets[3].data = [{
             x: currentIndex,
             y: flightChart.altitudes[currentIndex]
           }];
@@ -666,7 +685,7 @@
         } else {
           stopAnimation();
           playBtn.textContent = '🔄 Replay';
-          flightChart.data.datasets[2].data = [];
+          flightChart.data.datasets[3].data = [];
           flightChart.update('none');
         }
       }, speed);
