@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>IGC Interpreter</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
     * {
       margin: 0;
@@ -254,6 +256,53 @@
     #flightChart {
       max-height: 400px;
     }
+
+    .map-container {
+      background: #252526;
+      border: 1px solid #3e3e42;
+      border-top: none;
+      padding: 0;
+      height: 500px;
+      position: relative;
+    }
+
+    .map-container.collapsed {
+      display: none;
+    }
+
+    #flightMap {
+      width: 100%;
+      height: 100%;
+    }
+
+    .leaflet-popup-content-wrapper {
+      background: #2d2d2d;
+      color: #d4d4d4;
+    }
+
+    .leaflet-popup-tip {
+      background: #2d2d2d;
+    }
+
+    .flight-info-popup {
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+    }
+
+    .flight-info-popup div {
+      margin: 3px 0;
+    }
+
+    .flight-info-label {
+      color: #858585;
+      display: inline-block;
+      width: 50px;
+    }
+
+    .flight-info-value {
+      color: #4ec9b0;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
@@ -355,6 +404,16 @@
       </div>
     </div>
 
+    <div class="output-container" id="mapContainer">
+      <div class="output-header" id="mapHeader">
+        <span class="output-title">Mapa do Voo</span>
+        <span class="toggle-icon">▼</span>
+      </div>
+      <div class="map-container" id="mapContent">
+        <div id="flightMap"></div>
+      </div>
+    </div>
+
     <div class="output-container" id="outputContainer">
       <div class="output-header" id="outputHeader">
         <span class="output-title">Resultado</span>
@@ -375,6 +434,9 @@
     const chartContainer = document.getElementById('chartContainer');
     const chartHeader = document.getElementById('chartHeader');
     const chartContent = document.getElementById('chartContent');
+    const mapContainer = document.getElementById('mapContainer');
+    const mapHeader = document.getElementById('mapHeader');
+    const mapContent = document.getElementById('mapContent');
     const outputContainer = document.getElementById('outputContainer');
     const outputHeader = document.getElementById('outputHeader');
     const output = document.getElementById('output');
@@ -386,6 +448,9 @@
 
     let flightChart = null;
     let flightData = null;
+    let flightMap = null;
+    let flightPath = null;
+    let currentMarker = null;
     let animationInterval = null;
     let currentIndex = 0;
 
@@ -397,6 +462,14 @@
     chartHeader.addEventListener('click', () => {
       chartHeader.classList.toggle('collapsed');
       chartContent.classList.toggle('collapsed');
+    });
+
+    mapHeader.addEventListener('click', () => {
+      mapHeader.classList.toggle('collapsed');
+      mapContent.classList.toggle('collapsed');
+      if (flightMap && !mapContent.classList.contains('collapsed')) {
+        setTimeout(() => flightMap.invalidateSize(), 100);
+      }
     });
 
     outputHeader.addEventListener('click', () => {
@@ -445,6 +518,7 @@
       errorDiv.classList.remove('show');
       summaryContainer.classList.remove('show');
       chartContainer.classList.remove('show');
+      mapContainer.classList.remove('show');
       outputContainer.classList.remove('show');
       loading.classList.add('show');
       stopAnimation();
@@ -469,6 +543,11 @@
           chartContainer.classList.add('show');
           chartHeader.classList.remove('collapsed');
           chartContent.classList.remove('collapsed');
+
+          createFlightMap(data.fixes);
+          mapContainer.classList.add('show');
+          mapHeader.classList.remove('collapsed');
+          mapContent.classList.remove('collapsed');
 
           jsonOutput.textContent = JSON.stringify(data, null, 2);
           outputContainer.classList.add('show');
@@ -669,6 +748,50 @@
       playBtn.disabled = false;
     }
 
+    function createFlightMap(fixes) {
+      if (flightMap) {
+        flightMap.remove();
+      }
+
+      const firstFix = fixes[0];
+      flightMap = L.map('flightMap').setView([firstFix.latitude, firstFix.longitude], 13);
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 19
+      }).addTo(flightMap);
+
+      const pathCoords = fixes.map(f => [f.latitude, f.longitude]);
+      flightPath = L.polyline(pathCoords, {
+        color: '#E74C3C',
+        weight: 3,
+        opacity: 0.7
+      }).addTo(flightMap);
+
+      flightMap.fitBounds(flightPath.getBounds());
+
+      const startIcon = L.divIcon({
+        className: 'start-marker',
+        html: '<div style="background: #4ec9b0; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white;"></div>',
+        iconSize: [12, 12]
+      });
+
+      L.marker([firstFix.latitude, firstFix.longitude], { icon: startIcon })
+        .bindPopup('Início')
+        .addTo(flightMap);
+
+      const lastFix = fixes[fixes.length - 1];
+      const endIcon = L.divIcon({
+        className: 'end-marker',
+        html: '<div style="background: #dc3545; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white;"></div>',
+        iconSize: [12, 12]
+      });
+
+      L.marker([lastFix.latitude, lastFix.longitude], { icon: endIcon })
+        .bindPopup('Fim')
+        .addTo(flightMap);
+    }
+
     function calculateDistance(lat1, lon1, lat2, lon2) {
       const R = 6371;
       const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -707,6 +830,11 @@
           );
 
           flightChart.update('none');
+
+          if (flightMap && flightData) {
+            updateMapMarker(currentIndex);
+          }
+
           currentIndex++;
         } else {
           stopAnimation();
@@ -714,8 +842,37 @@
           flightChart.data.datasets[3].data = new Array(flightChart.altitudes.length).fill(null);
           flightChart.data.datasets[3].pointRadius = 0;
           flightChart.update('none');
+
+          if (currentMarker && flightMap) {
+            flightMap.removeLayer(currentMarker);
+          }
         }
       }, speed);
+    }
+
+    function updateMapMarker(index) {
+      const fix = flightData.fixes[index];
+
+      if (currentMarker) {
+        flightMap.removeLayer(currentMarker);
+      }
+
+      const markerIcon = L.divIcon({
+        className: 'current-position-marker',
+        html: '<div style="background: #ffc107; width: 16px; height: 16px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 10px rgba(255,193,7,0.5);"></div>',
+        iconSize: [16, 16]
+      });
+
+      const popupContent = `
+        <div class="flight-info-popup">
+          <div><span class="flight-info-label">ALT</span><span class="flight-info-value">${fix.gpsAltitude || 0}m</span></div>
+          <div><span class="flight-info-label">AGL</span><span class="flight-info-value">${fix.pressureAltitude || 0}m</span></div>
+        </div>
+      `;
+
+      currentMarker = L.marker([fix.latitude, fix.longitude], { icon: markerIcon })
+        .bindPopup(popupContent)
+        .addTo(flightMap);
     }
 
     function stopAnimation() {
