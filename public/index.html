@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>IGC Interpreter</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
   <style>
     * {
       margin: 0;
@@ -185,6 +186,74 @@
       font-size: 12px;
       margin-left: 5px;
     }
+
+    .chart-container {
+      background: #252526;
+      border: 1px solid #3e3e42;
+      border-top: none;
+      padding: 20px;
+      position: relative;
+    }
+
+    .chart-container.collapsed {
+      display: none;
+    }
+
+    .chart-controls {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 20px;
+      padding: 15px;
+      background: #2d2d2d;
+      border-radius: 4px;
+    }
+
+    .play-btn {
+      background: #4ec9b0;
+      color: #1e1e1e;
+      border: none;
+      padding: 10px 20px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 14px;
+      border-radius: 4px;
+      font-weight: bold;
+    }
+
+    .play-btn:hover {
+      background: #569cd6;
+    }
+
+    .play-btn:disabled {
+      background: #3e3e42;
+      color: #858585;
+      cursor: not-allowed;
+    }
+
+    .speed-control {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .speed-control label {
+      color: #858585;
+      font-size: 12px;
+    }
+
+    .speed-control select {
+      background: #3e3e42;
+      color: #d4d4d4;
+      border: 1px solid #569cd6;
+      padding: 5px 10px;
+      font-family: inherit;
+      cursor: pointer;
+    }
+
+    #flightChart {
+      max-height: 400px;
+    }
   </style>
 </head>
 <body>
@@ -252,6 +321,28 @@
       </div>
     </div>
 
+    <div class="output-container" id="chartContainer">
+      <div class="output-header" id="chartHeader">
+        <span class="output-title">Gráfico do Voo</span>
+        <span class="toggle-icon">▼</span>
+      </div>
+      <div class="chart-container" id="chartContent">
+        <div class="chart-controls">
+          <button class="play-btn" id="playBtn" disabled>▶ Play</button>
+          <div class="speed-control">
+            <label>Velocidade:</label>
+            <select id="speedSelect">
+              <option value="10">0.5x</option>
+              <option value="20" selected>1x</option>
+              <option value="40">2x</option>
+              <option value="80">4x</option>
+            </select>
+          </div>
+        </div>
+        <canvas id="flightChart"></canvas>
+      </div>
+    </div>
+
     <div class="output-container" id="outputContainer">
       <div class="output-header" id="outputHeader">
         <span class="output-title">Resultado</span>
@@ -269,21 +360,44 @@
     const summaryContainer = document.getElementById('summaryContainer');
     const summaryHeader = document.getElementById('summaryHeader');
     const summaryGrid = document.getElementById('summaryGrid');
+    const chartContainer = document.getElementById('chartContainer');
+    const chartHeader = document.getElementById('chartHeader');
+    const chartContent = document.getElementById('chartContent');
     const outputContainer = document.getElementById('outputContainer');
     const outputHeader = document.getElementById('outputHeader');
     const output = document.getElementById('output');
     const jsonOutput = document.getElementById('jsonOutput');
     const loading = document.getElementById('loading');
     const errorDiv = document.getElementById('error');
+    const playBtn = document.getElementById('playBtn');
+    const speedSelect = document.getElementById('speedSelect');
+
+    let flightChart = null;
+    let flightData = null;
+    let animationInterval = null;
+    let currentIndex = 0;
 
     summaryHeader.addEventListener('click', () => {
       summaryHeader.classList.toggle('collapsed');
       summaryGrid.classList.toggle('collapsed');
     });
 
+    chartHeader.addEventListener('click', () => {
+      chartHeader.classList.toggle('collapsed');
+      chartContent.classList.toggle('collapsed');
+    });
+
     outputHeader.addEventListener('click', () => {
       outputHeader.classList.toggle('collapsed');
       output.classList.toggle('collapsed');
+    });
+
+    playBtn.addEventListener('click', toggleAnimation);
+    speedSelect.addEventListener('change', () => {
+      if (animationInterval) {
+        stopAnimation();
+        startAnimation();
+      }
     });
 
     uploadArea.addEventListener('click', () => fileInput.click());
@@ -318,8 +432,10 @@
 
       errorDiv.classList.remove('show');
       summaryContainer.classList.remove('show');
+      chartContainer.classList.remove('show');
       outputContainer.classList.remove('show');
       loading.classList.add('show');
+      stopAnimation();
 
       try {
         const response = await fetch('/upload', {
@@ -330,10 +446,17 @@
         const data = await response.json();
 
         if (response.ok) {
+          flightData = data;
+
           updateSummary(data.summary);
           summaryContainer.classList.add('show');
           summaryHeader.classList.remove('collapsed');
           summaryGrid.classList.remove('collapsed');
+
+          createFlightChart(data.fixes);
+          chartContainer.classList.add('show');
+          chartHeader.classList.remove('collapsed');
+          chartContent.classList.remove('collapsed');
 
           jsonOutput.textContent = JSON.stringify(data, null, 2);
           outputContainer.classList.add('show');
@@ -389,6 +512,147 @@
         `${summary.flightTime}<span class="summary-unit">min</span>`;
       document.getElementById('altitudeGain').innerHTML =
         `${summary.altitudeGain}<span class="summary-unit">m</span>`;
+    }
+
+    function createFlightChart(fixes) {
+      if (flightChart) {
+        flightChart.destroy();
+      }
+
+      const ctx = document.getElementById('flightChart').getContext('2d');
+      const times = fixes.map((f, i) => i);
+      const altitudes = fixes.map(f => f.gpsAltitude || 0);
+
+      const speeds = fixes.map((f, i) => {
+        if (i === 0) return 0;
+        const prev = fixes[i - 1];
+        const dist = calculateDistance(prev.latitude, prev.longitude, f.latitude, f.longitude);
+        const timeDiff = (new Date(f.timestamp) - new Date(prev.timestamp)) / 1000;
+        return timeDiff > 0 ? (dist / timeDiff) * 3600 : 0;
+      });
+
+      flightChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: times,
+          datasets: [{
+            label: 'Altitude (m)',
+            data: [],
+            borderColor: '#4ec9b0',
+            backgroundColor: 'rgba(78, 201, 176, 0.1)',
+            tension: 0.4,
+            yAxisID: 'y'
+          }, {
+            label: 'Velocidade (km/h)',
+            data: [],
+            borderColor: '#569cd6',
+            backgroundColor: 'rgba(86, 156, 214, 0.1)',
+            tension: 0.4,
+            yAxisID: 'y1'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          animation: false,
+          interaction: {
+            mode: 'index',
+            intersect: false
+          },
+          scales: {
+            x: {
+              display: false
+            },
+            y: {
+              type: 'linear',
+              display: true,
+              position: 'left',
+              title: {
+                display: true,
+                text: 'Altitude (m)',
+                color: '#4ec9b0'
+              },
+              ticks: { color: '#858585' },
+              grid: { color: '#3e3e42' }
+            },
+            y1: {
+              type: 'linear',
+              display: true,
+              position: 'right',
+              title: {
+                display: true,
+                text: 'Velocidade (km/h)',
+                color: '#569cd6'
+              },
+              ticks: { color: '#858585' },
+              grid: { display: false }
+            }
+          },
+          plugins: {
+            legend: {
+              labels: { color: '#d4d4d4' }
+            }
+          }
+        }
+      });
+
+      flightChart.altitudes = altitudes;
+      flightChart.speeds = speeds;
+      currentIndex = 0;
+      playBtn.disabled = false;
+    }
+
+    function calculateDistance(lat1, lon1, lat2, lon2) {
+      const R = 6371;
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    }
+
+    function toggleAnimation() {
+      if (animationInterval) {
+        stopAnimation();
+      } else {
+        startAnimation();
+      }
+    }
+
+    function startAnimation() {
+      if (currentIndex >= flightChart.altitudes.length) {
+        currentIndex = 0;
+        flightChart.data.datasets[0].data = [];
+        flightChart.data.datasets[1].data = [];
+        flightChart.update('none');
+      }
+
+      playBtn.textContent = '⏸ Pause';
+      const speed = parseInt(speedSelect.value);
+
+      animationInterval = setInterval(() => {
+        if (currentIndex < flightChart.altitudes.length) {
+          flightChart.data.datasets[0].data.push(flightChart.altitudes[currentIndex]);
+          flightChart.data.datasets[1].data.push(flightChart.speeds[currentIndex]);
+          flightChart.update('none');
+          currentIndex++;
+        } else {
+          stopAnimation();
+          playBtn.textContent = '🔄 Replay';
+        }
+      }, speed);
+    }
+
+    function stopAnimation() {
+      if (animationInterval) {
+        clearInterval(animationInterval);
+        animationInterval = null;
+        if (currentIndex < flightChart?.altitudes?.length) {
+          playBtn.textContent = '▶ Play';
+        }
+      }
     }
   </script>
 </body>
