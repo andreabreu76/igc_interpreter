@@ -291,8 +291,16 @@
           <div class="summary-value" id="startPosition" style="font-size: 12px;">-</div>
         </div>
         <div class="summary-item">
+          <div class="summary-label">Hora Inicial</div>
+          <div class="summary-value" id="startTime" style="font-size: 14px;">-</div>
+        </div>
+        <div class="summary-item">
           <div class="summary-label">Posição Final</div>
           <div class="summary-value" id="endPosition" style="font-size: 12px;">-</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-label">Hora Final</div>
+          <div class="summary-value" id="endTime" style="font-size: 14px;">-</div>
         </div>
         <div class="summary-item">
           <div class="summary-label">Altitude Máxima</div>
@@ -496,12 +504,20 @@
         const startLat = summary.startPosition.latitude.toFixed(5);
         const startLon = summary.startPosition.longitude.toFixed(5);
         document.getElementById('startPosition').textContent = `${startLat}, ${startLon}`;
+
+        const startTime = new Date(summary.startPosition.time);
+        document.getElementById('startTime').textContent =
+          startTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
       }
 
       if (summary.endPosition) {
         const endLat = summary.endPosition.latitude.toFixed(5);
         const endLon = summary.endPosition.longitude.toFixed(5);
         document.getElementById('endPosition').textContent = `${endLat}, ${endLon}`;
+
+        const endTime = new Date(summary.endPosition.time);
+        document.getElementById('endTime').textContent =
+          endTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
       }
 
       document.getElementById('maxAltitude').innerHTML =
