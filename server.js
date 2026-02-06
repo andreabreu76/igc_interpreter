@@ -35,7 +35,7 @@ app.post('/upload', upload.single('igcFile'), async (req, res) => {
       duration: calculateDuration(igcData.fixes),
       task: igcData.task,
       summary,
-      fixes: igcData.fixes.slice(0, 100)
+      fixes: igcData.fixes
     };
 
     await fs.unlink(req.file.path);
