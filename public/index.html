@@ -666,7 +666,7 @@
       }
 
       playBtn.textContent = 'Pause';
-      const speed = parseInt(speedSelect.value);
+      const speed = parseFloat(speedSelect.value);
 
       animationInterval = setInterval(() => {
         if (currentIndex < flightChart.altitudes.length) {
