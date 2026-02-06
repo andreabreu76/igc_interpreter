@@ -206,6 +206,26 @@
       </div>
       <div class="summary-grid" id="summaryGrid">
         <div class="summary-item">
+          <div class="summary-label">Piloto</div>
+          <div class="summary-value" id="pilot" style="font-size: 16px;">-</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-label">Equipamento</div>
+          <div class="summary-value" id="gliderType" style="font-size: 16px;">-</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-label">Total de Pontos</div>
+          <div class="summary-value" id="totalFixes">-<span class="summary-unit">fixes</span></div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-label">Posição Inicial</div>
+          <div class="summary-value" id="startPosition" style="font-size: 12px;">-</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-label">Posição Final</div>
+          <div class="summary-value" id="endPosition" style="font-size: 12px;">-</div>
+        </div>
+        <div class="summary-item">
           <div class="summary-label">Altitude Máxima</div>
           <div class="summary-value" id="maxAltitude">-<span class="summary-unit">m</span></div>
         </div>
@@ -338,6 +358,23 @@
       if (!summary) {
         console.error('Summary data is missing');
         return;
+      }
+
+      document.getElementById('pilot').textContent = summary.pilot;
+      document.getElementById('gliderType').textContent = summary.gliderType;
+      document.getElementById('totalFixes').innerHTML =
+        `${summary.totalFixes}<span class="summary-unit">fixes</span>`;
+
+      if (summary.startPosition) {
+        const startLat = summary.startPosition.latitude.toFixed(5);
+        const startLon = summary.startPosition.longitude.toFixed(5);
+        document.getElementById('startPosition').textContent = `${startLat}, ${startLon}`;
+      }
+
+      if (summary.endPosition) {
+        const endLat = summary.endPosition.latitude.toFixed(5);
+        const endLon = summary.endPosition.longitude.toFixed(5);
+        document.getElementById('endPosition').textContent = `${endLat}, ${endLon}`;
       }
 
       document.getElementById('maxAltitude').innerHTML =

@@ -18,7 +18,7 @@ app.post('/upload', upload.single('igcFile'), async (req, res) => {
       return res.status(400).json({ error: 'No GPS fixes found in IGC file' });
     }
 
-    const summary = calculateFlightSummary(igcData.fixes);
+    const summary = calculateFlightSummary(igcData.fixes, igcData);
 
     const flightInfo = {
       pilot: igcData.pilot,
@@ -65,9 +65,14 @@ function haversineDistance(lat1, lon1, lat2, lon2) {
   return R * c;
 }
 
-function calculateFlightSummary(fixes) {
+function calculateFlightSummary(fixes, igcData) {
   if (fixes.length < 2) {
     return {
+      pilot: igcData?.pilot || 'N/A',
+      gliderType: igcData?.gliderType || 'N/A',
+      totalFixes: 0,
+      startPosition: null,
+      endPosition: null,
       maxAltitude: 0,
       minAltitude: 0,
       maxSpeed: 0,
@@ -113,7 +118,23 @@ function calculateFlightSummary(fixes) {
 
   const flightTime = calculateDuration(fixes);
 
+  const firstFix = fixes[0];
+  const lastFix = fixes[fixes.length - 1];
+
   return {
+    pilot: igcData?.pilot || 'N/A',
+    gliderType: igcData?.gliderType || 'N/A',
+    totalFixes: fixes.length,
+    startPosition: {
+      latitude: firstFix.latitude,
+      longitude: firstFix.longitude,
+      time: firstFix.timestamp
+    },
+    endPosition: {
+      latitude: lastFix.latitude,
+      longitude: lastFix.longitude,
+      time: lastFix.timestamp
+    },
     maxAltitude: Math.round(maxAltitude),
     minAltitude: Math.round(minAltitude),
     maxSpeed: Math.round(maxSpeed),
