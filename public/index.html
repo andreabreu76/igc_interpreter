@@ -335,6 +335,11 @@
     }
 
     function updateSummary(summary) {
+      if (!summary) {
+        console.error('Summary data is missing');
+        return;
+      }
+
       document.getElementById('maxAltitude').innerHTML =
         `${summary.maxAltitude}<span class="summary-unit">m</span>`;
       document.getElementById('minAltitude').innerHTML =

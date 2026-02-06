@@ -13,6 +13,11 @@ app.post('/upload', upload.single('igcFile'), async (req, res) => {
     const fileContent = await fs.readFile(req.file.path, 'utf-8');
     const igcData = IGCParser.parse(fileContent);
 
+    if (!igcData.fixes || igcData.fixes.length === 0) {
+      await fs.unlink(req.file.path);
+      return res.status(400).json({ error: 'No GPS fixes found in IGC file' });
+    }
+
     const summary = calculateFlightSummary(igcData.fixes);
 
     const flightInfo = {
