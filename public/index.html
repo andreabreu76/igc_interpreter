@@ -520,7 +520,12 @@
       }
 
       const ctx = document.getElementById('flightChart').getContext('2d');
-      const times = fixes.map((f, i) => i);
+      const startTime = new Date(fixes[0].timestamp);
+
+      const times = fixes.map(f => {
+        return ((new Date(f.timestamp) - startTime) / 1000 / 60).toFixed(1);
+      });
+
       const altitudes = fixes.map(f => f.gpsAltitude || 0);
 
       const speeds = fixes.map((f, i) => {
@@ -572,7 +577,17 @@
           },
           scales: {
             x: {
-              display: false
+              display: true,
+              title: {
+                display: true,
+                text: 'Tempo (minutos)',
+                color: '#858585'
+              },
+              ticks: {
+                color: '#858585',
+                maxTicksLimit: 10
+              },
+              grid: { color: '#3e3e42' }
             },
             y: {
               type: 'linear',
