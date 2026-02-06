@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IGC Interpreter</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Courier New', monospace;
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 40px 20px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      font-size: 24px;
+      margin-bottom: 30px;
+      color: #569cd6;
+    }
+
+    .upload-area {
+      border: 2px dashed #569cd6;
+      padding: 40px;
+      text-align: center;
+      margin-bottom: 30px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .upload-area:hover {
+      border-color: #4ec9b0;
+      background: #2d2d2d;
+    }
+
+    .upload-area.dragover {
+      background: #2d2d2d;
+      border-color: #4ec9b0;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    .btn {
+      background: #569cd6;
+      color: #fff;
+      border: none;
+      padding: 10px 20px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 14px;
+    }
+
+    .btn:hover {
+      background: #4ec9b0;
+    }
+
+    .output-container {
+      display: none;
+    }
+
+    .output-container.show {
+      display: block;
+    }
+
+    .output-header {
+      background: #2d2d2d;
+      border: 1px solid #3e3e42;
+      border-bottom: none;
+      padding: 12px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .output-header:hover {
+      background: #333333;
+    }
+
+    .output-title {
+      color: #569cd6;
+      font-size: 14px;
+    }
+
+    .toggle-icon {
+      color: #858585;
+      font-size: 12px;
+      transition: transform 0.3s;
+    }
+
+    .output-header.collapsed .toggle-icon {
+      transform: rotate(-90deg);
+    }
+
+    .output {
+      background: #252526;
+      border: 1px solid #3e3e42;
+      padding: 20px;
+      overflow-x: auto;
+      max-height: 600px;
+      overflow-y: auto;
+    }
+
+    .output.collapsed {
+      display: none;
+    }
+
+    pre {
+      color: #d4d4d4;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 20px;
+      display: none;
+    }
+
+    .loading.show {
+      display: block;
+    }
+
+    .error {
+      background: #5a1d1d;
+      color: #f48771;
+      padding: 15px;
+      margin-bottom: 20px;
+      border-left: 3px solid #f48771;
+      display: none;
+    }
+
+    .error.show {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>IGC Interpreter</h1>
+
+    <div class="upload-area" id="uploadArea">
+      <p>Clique ou arraste um arquivo IGC aqui</p>
+      <input type="file" id="fileInput" accept=".igc">
+    </div>
+
+    <div class="error" id="error"></div>
+    <div class="loading" id="loading">Processando...</div>
+    <div class="output-container" id="outputContainer">
+      <div class="output-header" id="outputHeader">
+        <span class="output-title">Resultado</span>
+        <span class="toggle-icon">▼</span>
+      </div>
+      <div class="output" id="output">
+        <pre id="jsonOutput"></pre>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('fileInput');
+    const outputContainer = document.getElementById('outputContainer');
+    const outputHeader = document.getElementById('outputHeader');
+    const output = document.getElementById('output');
+    const jsonOutput = document.getElementById('jsonOutput');
+    const loading = document.getElementById('loading');
+    const errorDiv = document.getElementById('error');
+
+    outputHeader.addEventListener('click', () => {
+      outputHeader.classList.toggle('collapsed');
+      output.classList.toggle('collapsed');
+    });
+
+    uploadArea.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', handleFileSelect);
+
+    uploadArea.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadArea.classList.add('dragover');
+    });
+
+    uploadArea.addEventListener('dragleave', () => {
+      uploadArea.classList.remove('dragover');
+    });
+
+    uploadArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadArea.classList.remove('dragover');
+      const file = e.dataTransfer.files[0];
+      if (file && file.name.endsWith('.igc')) {
+        processFile(file);
+      }
+    });
+
+    function handleFileSelect(e) {
+      const file = e.target.files[0];
+      if (file) processFile(file);
+    }
+
+    async function processFile(file) {
+      const formData = new FormData();
+      formData.append('igcFile', file);
+
+      errorDiv.classList.remove('show');
+      outputContainer.classList.remove('show');
+      loading.classList.add('show');
+
+      try {
+        const response = await fetch('/upload', {
+          method: 'POST',
+          body: formData
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          jsonOutput.textContent = JSON.stringify(data, null, 2);
+          outputContainer.classList.add('show');
+          outputHeader.classList.remove('collapsed');
+          output.classList.remove('collapsed');
+        } else {
+          showError(data.error || 'Erro ao processar arquivo');
+        }
+      } catch (error) {
+        showError(error.message);
+      } finally {
+        loading.classList.remove('show');
+      }
+    }
+
+    function showError(message) {
+      errorDiv.textContent = message;
+      errorDiv.classList.add('show');
+    }
+  </script>
+</body>
+</html>
