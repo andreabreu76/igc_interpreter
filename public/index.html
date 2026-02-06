@@ -146,6 +146,45 @@
     .error.show {
       display: block;
     }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      padding: 20px;
+      background: #252526;
+      border: 1px solid #3e3e42;
+      border-top: none;
+    }
+
+    .summary-grid.collapsed {
+      display: none;
+    }
+
+    .summary-item {
+      background: #2d2d2d;
+      padding: 15px;
+      border-left: 3px solid #4ec9b0;
+    }
+
+    .summary-label {
+      color: #858585;
+      font-size: 11px;
+      text-transform: uppercase;
+      margin-bottom: 5px;
+    }
+
+    .summary-value {
+      color: #4ec9b0;
+      font-size: 20px;
+      font-weight: bold;
+    }
+
+    .summary-unit {
+      color: #858585;
+      font-size: 12px;
+      margin-left: 5px;
+    }
   </style>
 </head>
 <body>
@@ -159,6 +198,40 @@
 
     <div class="error" id="error"></div>
     <div class="loading" id="loading">Processando...</div>
+
+    <div class="output-container" id="summaryContainer">
+      <div class="output-header" id="summaryHeader">
+        <span class="output-title">Resumo do Voo</span>
+        <span class="toggle-icon">▼</span>
+      </div>
+      <div class="summary-grid" id="summaryGrid">
+        <div class="summary-item">
+          <div class="summary-label">Altitude Máxima</div>
+          <div class="summary-value" id="maxAltitude">-<span class="summary-unit">m</span></div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-label">Altitude Mínima</div>
+          <div class="summary-value" id="minAltitude">-<span class="summary-unit">m</span></div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-label">Velocidade Máxima</div>
+          <div class="summary-value" id="maxSpeed">-<span class="summary-unit">km/h</span></div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-label">Distância Total</div>
+          <div class="summary-value" id="totalDistance">-<span class="summary-unit">km</span></div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-label">Tempo de Voo</div>
+          <div class="summary-value" id="flightTime">-<span class="summary-unit">min</span></div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-label">Ganho de Altitude</div>
+          <div class="summary-value" id="altitudeGain">-<span class="summary-unit">m</span></div>
+        </div>
+      </div>
+    </div>
+
     <div class="output-container" id="outputContainer">
       <div class="output-header" id="outputHeader">
         <span class="output-title">Resultado</span>
@@ -173,12 +246,20 @@
   <script>
     const uploadArea = document.getElementById('uploadArea');
     const fileInput = document.getElementById('fileInput');
+    const summaryContainer = document.getElementById('summaryContainer');
+    const summaryHeader = document.getElementById('summaryHeader');
+    const summaryGrid = document.getElementById('summaryGrid');
     const outputContainer = document.getElementById('outputContainer');
     const outputHeader = document.getElementById('outputHeader');
     const output = document.getElementById('output');
     const jsonOutput = document.getElementById('jsonOutput');
     const loading = document.getElementById('loading');
     const errorDiv = document.getElementById('error');
+
+    summaryHeader.addEventListener('click', () => {
+      summaryHeader.classList.toggle('collapsed');
+      summaryGrid.classList.toggle('collapsed');
+    });
 
     outputHeader.addEventListener('click', () => {
       outputHeader.classList.toggle('collapsed');
@@ -216,6 +297,7 @@
       formData.append('igcFile', file);
 
       errorDiv.classList.remove('show');
+      summaryContainer.classList.remove('show');
       outputContainer.classList.remove('show');
       loading.classList.add('show');
 
@@ -228,6 +310,11 @@
         const data = await response.json();
 
         if (response.ok) {
+          updateSummary(data.summary);
+          summaryContainer.classList.add('show');
+          summaryHeader.classList.remove('collapsed');
+          summaryGrid.classList.remove('collapsed');
+
           jsonOutput.textContent = JSON.stringify(data, null, 2);
           outputContainer.classList.add('show');
           outputHeader.classList.remove('collapsed');
@@ -245,6 +332,21 @@
     function showError(message) {
       errorDiv.textContent = message;
       errorDiv.classList.add('show');
+    }
+
+    function updateSummary(summary) {
+      document.getElementById('maxAltitude').innerHTML =
+        `${summary.maxAltitude}<span class="summary-unit">m</span>`;
+      document.getElementById('minAltitude').innerHTML =
+        `${summary.minAltitude}<span class="summary-unit">m</span>`;
+      document.getElementById('maxSpeed').innerHTML =
+        `${summary.maxSpeed}<span class="summary-unit">km/h</span>`;
+      document.getElementById('totalDistance').innerHTML =
+        `${summary.totalDistance}<span class="summary-unit">km</span>`;
+      document.getElementById('flightTime').innerHTML =
+        `${summary.flightTime}<span class="summary-unit">min</span>`;
+      document.getElementById('altitudeGain').innerHTML =
+        `${summary.altitudeGain}<span class="summary-unit">m</span>`;
     }
   </script>
 </body>
