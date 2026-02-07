@@ -658,10 +658,12 @@
             timeZone: 'UTC'
           });
 
-        reverseGeocode(summary.endPosition.latitude, summary.endPosition.longitude)
-          .then(location => {
-            document.getElementById('endPosition').textContent = location || `${endLat}, ${endLon}`;
-          });
+        setTimeout(() => {
+          reverseGeocode(summary.endPosition.latitude, summary.endPosition.longitude)
+            .then(location => {
+              document.getElementById('endPosition').textContent = location || `${endLat}, ${endLon}`;
+            });
+        }, 1100);
       }
 
       document.getElementById('maxAltitude').innerHTML =
@@ -702,18 +704,12 @@
     let xcTurnpointsLayer = null;
 
     function drawXCTriangle(xcScore) {
-      console.log('drawXCTriangle called with:', xcScore);
-
       if (!xcScore || !xcScore.turnpoints || xcScore.turnpoints.length === 0) {
-        console.log('No turnpoints found');
         return;
       }
       if (!flightMap) {
-        console.log('flightMap not initialized yet');
         return;
       }
-
-      console.log('Drawing triangle with', xcScore.turnpoints.length, 'turnpoints');
 
       if (xcTriangleLayer) {
         flightMap.removeLayer(xcTriangleLayer);
@@ -724,7 +720,6 @@
 
       const turnpoints = xcScore.turnpoints;
       const triangleCoords = turnpoints.map(tp => [tp.lat, tp.lng]);
-      console.log('Triangle coords:', triangleCoords);
 
       if (xcScore.closingPoints) {
         triangleCoords.push([xcScore.closingPoints.in.lat, xcScore.closingPoints.in.lng]);

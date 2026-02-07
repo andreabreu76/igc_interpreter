@@ -57,15 +57,6 @@ app.post('/upload', upload.single('igcFile'), async (req, res) => {
 
       const best = solveBest(igcData, customXContestRules);
 
-      console.log('\n=== XC Scoring Debug ===');
-      console.log('Multipliers from .env:', customMultipliers);
-      console.log('Free Triangle closing distance:', parseFloat(process.env.XC_FREE_TRIANGLE_CLOSING || 0.1));
-      console.log('Best result:', {
-        score: best?.score,
-        distanceKm: best?.scoreInfo?.distance,
-        type: best?.opt?.scoring?.name,
-        multiplier: best?.opt?.scoring?.multiplier
-      });
 
       if (best && best.scoreInfo) {
         const rulesByCode = {};
@@ -87,13 +78,6 @@ app.post('/upload', upload.single('igcFile'), async (req, res) => {
               const distanceKm = r.scoreInfo.distance;
               const recalculatedScore = distanceKm * r.opt.scoring.multiplier;
 
-              console.log(`Type ${code} (${r.opt.scoring.name}):`, {
-                libraryScore: r.score,
-                distanceKm: distanceKm.toFixed(3),
-                multiplier: r.opt.scoring.multiplier,
-                recalculatedScore: recalculatedScore.toFixed(3)
-              });
-
               perType[code] = {
                 name: r.opt.scoring.name,
                 score: recalculatedScore,
@@ -112,16 +96,9 @@ app.post('/upload', upload.single('igcFile'), async (req, res) => {
               }
             }
           } catch (e) {
-            console.log(`Error solving type ${code}:`, e.message);
+            // Ignore scoring errors for specific types
           }
         }
-
-        console.log('Best score after recalculation:', {
-          type: actualBest.type,
-          distanceKm: actualBest.distance.toFixed(3),
-          multiplier: actualBest.multiplier,
-          score: actualBest.score.toFixed(3)
-        });
 
         const turnpoints = actualBestResult.scoreInfo.tp?.map(p => ({
           lat: p.y,
@@ -133,10 +110,6 @@ app.post('/upload', upload.single('igcFile'), async (req, res) => {
           in: { lat: actualBestResult.scoreInfo.cp.in.y, lng: actualBestResult.scoreInfo.cp.in.x },
           out: { lat: actualBestResult.scoreInfo.cp.out.y, lng: actualBestResult.scoreInfo.cp.out.x }
         } : null;
-
-        console.log('Turnpoints for visualization:', turnpoints);
-        console.log('Closing points:', closingPoints);
-        console.log('======================\n');
 
         xcScore = {
           score: actualBest.score,
