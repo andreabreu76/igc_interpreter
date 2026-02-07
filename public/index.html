@@ -324,6 +324,14 @@
       </div>
       <div class="summary-grid" id="summaryGrid">
         <div class="summary-item">
+          <div class="summary-label">Arquivo</div>
+          <div class="summary-value" id="fileName" style="font-size: 14px;">-</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-label">Data do Voo</div>
+          <div class="summary-value" id="flightDate" style="font-size: 14px;">-</div>
+        </div>
+        <div class="summary-item">
           <div class="summary-label">Piloto</div>
           <div class="summary-value" id="pilot" style="font-size: 16px;">-</div>
         </div>
@@ -514,7 +522,7 @@
         if (response.ok) {
           flightData = data;
 
-          updateSummary(data.summary);
+          updateSummary(data.summary, data.date, file.name);
           summaryContainer.classList.add('show');
           summaryHeader.classList.remove('collapsed');
           summaryGrid.classList.remove('collapsed');
@@ -548,10 +556,18 @@
       errorDiv.classList.add('show');
     }
 
-    function updateSummary(summary) {
+    function updateSummary(summary, flightDate, fileName) {
       if (!summary) {
         console.error('Summary data is missing');
         return;
+      }
+
+      document.getElementById('fileName').textContent = fileName || '-';
+
+      if (flightDate) {
+        const date = new Date(flightDate);
+        document.getElementById('flightDate').textContent =
+          date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
       }
 
       document.getElementById('pilot').textContent = summary.pilot;
