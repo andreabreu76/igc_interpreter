@@ -463,7 +463,7 @@ const popupContent = `
 L.Control.FitBounds = L.Control.extend({
   onAdd: function(map) {
     const btn = L.DomUtil.create('button', 'leaflet-bar leaflet-control');
-    btn.innerHTML = '🎯';
+    btn.innerHTML = '';
     btn.onclick = function() {
       map.fitBounds(flightPath.getBounds(), { padding: [50, 50] });
     };
@@ -646,11 +646,11 @@ XC_FREE_TRIANGLE_CLOSING=0.15
 ### 1. Sistema de Pontuação
 
 **Extraído do IGC:**
-- ✅ XC Score (Free Flight, Triangles)
-- ✅ Distância total
-- ✅ Altitude máxima
-- ✅ Ganho de altitude
-- ✅ Duração do voo
+- XC Score (Free Flight, Triangles)
+- Distância total
+- Altitude máxima
+- Ganho de altitude
+- Duração do voo
 
 **Possíveis Scores:**
 - Pontos por km voado
@@ -661,36 +661,36 @@ XC_FREE_TRIANGLE_CLOSING=0.15
 ### 2. Conquistas/Badges
 
 **Baseado em:**
-- ✅ Primeira vez voando X km
-- ✅ Primeiro triângulo FAI
-- ✅ Altitude máxima pessoal
-- ✅ Voo mais longo
-- ✅ Melhor vario médio
+- Primeira vez voando X km
+- Primeiro triângulo FAI
+- Altitude máxima pessoal
+- Voo mais longo
+- Melhor vario médio
 
 ### 3. Rankings
 
 **Métricas Disponíveis:**
-- ✅ XC Score total
-- ✅ Melhor voo (distância/score)
-- ✅ Total de voos
-- ✅ Horas de voo
-- ✅ Locais voados (via geocoding)
+- XC Score total
+- Melhor voo (distância/score)
+- Total de voos
+- Horas de voo
+- Locais voados (via geocoding)
 
 ### 4. Análise Temporal
 
 **Dados Extraíveis:**
-- ✅ Timestamp de cada fix
-- ✅ Duração por fase (subida/planeio/descida)
-- ✅ Horário de decolagem/pouso
-- ✅ Tempo em térmica vs transição
+- Timestamp de cada fix
+- Duração por fase (subida/planeio/descida)
+- Horário de decolagem/pouso
+- Tempo em térmica vs transição
 
 ### 5. Comparação Social
 
 **Dados Compartilháveis:**
-- ✅ Trajeto no mapa
-- ✅ Gráficos de altitude/velocidade/vario
-- ✅ Estatísticas do voo
-- ✅ Triângulo XC otimizado
+- Trajeto no mapa
+- Gráficos de altitude/velocidade/vario
+- Estatísticas do voo
+- Triângulo XC otimizado
 
 ---
 
@@ -766,33 +766,33 @@ XC_FREE_TRIANGLE_CLOSING=0.15
 
 ### 1. Parsing de IGC
 
-- ✅ Biblioteca igc-parser é robusta
-- ✅ Validação de fixes é crucial
-- ✅ Timestamps são sempre UTC
+- Biblioteca igc-parser é robusta
+- Validação de fixes é crucial
+- Timestamps são sempre UTC
 
 ### 2. Cálculos Geográficos
 
-- ✅ Haversine é suficiente para distâncias curtas (<500km)
-- ✅ WGS84 vs outros sistemas
-- ✅ Precisão GPS ~5-10m
+- Haversine é suficiente para distâncias curtas (<500km)
+- WGS84 vs outros sistemas
+- Precisão GPS ~5-10m
 
 ### 3. XC Scoring
 
-- ✅ Algoritmo de branch-and-bound é complexo
-- ✅ Multiplicadores fazem grande diferença
-- ✅ Parâmetros de fechamento são críticos
+- Algoritmo de branch-and-bound é complexo
+- Multiplicadores fazem grande diferença
+- Parâmetros de fechamento são críticos
 
 ### 4. Visualização
 
-- ✅ Chart.js performa bem até ~10k pontos
-- ✅ Leaflet é leve e rápido
-- ✅ Animação sincronizada requer cuidado
+- Chart.js performa bem até ~10k pontos
+- Leaflet é leve e rápido
+- Animação sincronizada requer cuidado
 
 ### 5. UX
 
-- ✅ Dark theme é preferido por pilotos
-- ✅ Gráficos empilhados > abas
-- ✅ Informação visual > números
+- Dark theme é preferido por pilotos
+- Gráficos empilhados > abas
+- Informação visual > números
 
 ---
 
@@ -800,12 +800,12 @@ XC_FREE_TRIANGLE_CLOSING=0.15
 
 O **IGC Interpreter** é um laboratório funcional que demonstra:
 
-1. ✅ **Parsing completo** de arquivos IGC
-2. ✅ **Cálculos precisos** de distância, velocidade, vario
-3. ✅ **XC Scoring** com ~1% de precisão vs XContest
-4. ✅ **Visualizações interativas** (gráficos + mapa)
-5. ✅ **Geocoding** de posições
-6. ✅ **Animação sincronizada** entre gráfico e mapa
+1. **Parsing completo** de arquivos IGC
+2. **Cálculos precisos** de distância, velocidade, vario
+3. **XC Scoring** com ~1% de precisão vs XContest
+4. **Visualizações interativas** (gráficos + mapa)
+5. **Geocoding** de posições
+6. **Animação sincronizada** entre gráfico e mapa
 
 **Tecnicamente pronto** para servir como base para um sistema de gamificação de voos, com todos os dados necessários sendo extraídos e calculados corretamente.
 
