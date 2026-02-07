@@ -3,3 +3,4 @@ uploads/
 *.log
 CLAUDE.md
 .claude/
+.env

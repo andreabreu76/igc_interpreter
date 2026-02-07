@@ -406,20 +406,16 @@
           </div>
         </div>
         <div class="summary-item">
-          <div class="summary-label">Free Distance</div>
-          <div class="summary-value" id="scoreFreeDistance" style="font-size: 14px;">-</div>
+          <div class="summary-label">Free Flight</div>
+          <div class="summary-value" id="scoreOd" style="font-size: 14px;">-</div>
         </div>
         <div class="summary-item">
-          <div class="summary-label">Free Triangle</div>
-          <div class="summary-value" id="scoreFreeTriangle" style="font-size: 14px;">-</div>
-        </div>
-        <div class="summary-item">
-          <div class="summary-label">Flat Triangle</div>
-          <div class="summary-value" id="scoreFlatTriangle" style="font-size: 14px;">-</div>
+          <div class="summary-label">Triangle</div>
+          <div class="summary-value" id="scoreTri" style="font-size: 14px;">-</div>
         </div>
         <div class="summary-item">
           <div class="summary-label">FAI Triangle</div>
-          <div class="summary-value" id="scoreFaiTriangle" style="font-size: 14px;">-</div>
+          <div class="summary-value" id="scoreFai" style="font-size: 14px;">-</div>
         </div>
       </div>
     </div>
@@ -688,32 +684,15 @@
       document.getElementById('bestDistance').innerHTML =
         `${xcScore.distance.toFixed(2)}<span class="summary-unit">km</span>`;
 
-      if (xcScore.optimal.freeDistance) {
-        document.getElementById('scoreFreeDistance').innerHTML =
-          `${xcScore.optimal.freeDistance.score.toFixed(2)} <span class="summary-unit">(${xcScore.optimal.freeDistance.distance.toFixed(2)} km)</span>`;
-      } else {
-        document.getElementById('scoreFreeDistance').textContent = '-';
-      }
-
-      if (xcScore.optimal.freeTriangle) {
-        document.getElementById('scoreFreeTriangle').innerHTML =
-          `${xcScore.optimal.freeTriangle.score.toFixed(2)} <span class="summary-unit">(${xcScore.optimal.freeTriangle.distance.toFixed(2)} km)</span>`;
-      } else {
-        document.getElementById('scoreFreeTriangle').textContent = '-';
-      }
-
-      if (xcScore.optimal.flatTriangle) {
-        document.getElementById('scoreFlatTriangle').innerHTML =
-          `${xcScore.optimal.flatTriangle.score.toFixed(2)} <span class="summary-unit">(${xcScore.optimal.flatTriangle.distance.toFixed(2)} km)</span>`;
-      } else {
-        document.getElementById('scoreFlatTriangle').textContent = '-';
-      }
-
-      if (xcScore.optimal.faiTriangle) {
-        document.getElementById('scoreFaiTriangle').innerHTML =
-          `${xcScore.optimal.faiTriangle.score.toFixed(2)} <span class="summary-unit">(${xcScore.optimal.faiTriangle.distance.toFixed(2)} km)</span>`;
-      } else {
-        document.getElementById('scoreFaiTriangle').textContent = '-';
+      const typeMap = { od: 'scoreOd', tri: 'scoreTri', fai: 'scoreFai' };
+      for (const [code, elementId] of Object.entries(typeMap)) {
+        const el = document.getElementById(elementId);
+        if (xcScore.types && xcScore.types[code]) {
+          const t = xcScore.types[code];
+          el.innerHTML = `${t.score.toFixed(2)} <span class="summary-unit">(${t.distance.toFixed(2)} km)</span>`;
+        } else {
+          el.textContent = '-';
+        }
       }
     }
 

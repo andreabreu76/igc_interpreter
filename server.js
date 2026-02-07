@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const multer = require('multer');
 const fs = require('fs').promises;
@@ -23,36 +24,115 @@ app.post('/upload', upload.single('igcFile'), async (req, res) => {
     let xcScore = null;
     try {
       const { solver, scoringRules } = await import('igc-xc-score');
-      const result = solver(igcData, scoringRules.XContest).next().value;
 
-      if (result && result.scoreInfo) {
-        xcScore = {
-          score: result.scoreInfo.points,
-          distance: result.scoreInfo.distance / 1000,
-          type: result.scoreInfo.name,
-          multiplier: result.scoreInfo.multiplier || 1,
-          optimal: {
-            freeDistance: result.optimal?.flight ? {
-              distance: result.optimal.flight.distance / 1000,
-              score: result.optimal.flight.score
-            } : null,
-            freeTriangle: result.optimal?.triangle ? {
-              distance: result.optimal.triangle.distance / 1000,
-              score: result.optimal.triangle.score
-            } : null,
-            flatTriangle: result.optimal?.flatTriangle ? {
-              distance: result.optimal.flatTriangle.distance / 1000,
-              score: result.optimal.flatTriangle.score
-            } : null,
-            faiTriangle: result.optimal?.faiTriangle ? {
-              distance: result.optimal.faiTriangle.distance / 1000,
-              score: result.optimal.faiTriangle.score
-            } : null
+      const customMultipliers = {
+        'Free Flight': parseFloat(process.env.XC_FREE_FLIGHT_MULTIPLIER) || 1.5,
+        'Free Triangle': parseFloat(process.env.XC_FREE_TRIANGLE_MULTIPLIER) || 1.75,
+        'FAI Triangle': parseFloat(process.env.XC_FAI_TRIANGLE_MULTIPLIER) || 2.0,
+        'Closed Free Triangle': parseFloat(process.env.XC_FREE_TRIANGLE_MULTIPLIER) || 1.75,
+        'Closed FAI Triangle': parseFloat(process.env.XC_FAI_TRIANGLE_MULTIPLIER) || 2.0
+      };
+
+      const customXContestRules = scoringRules.XContest.map(rule => {
+        const customRule = {
+          ...rule,
+          multiplier: customMultipliers[rule.name] || rule.multiplier
+        };
+
+        if (rule.name === 'Free Triangle') {
+          customRule.closingDistanceRelative = parseFloat(process.env.XC_FREE_TRIANGLE_CLOSING || 0.1);
+        }
+
+        return customRule;
+      });
+
+      function solveBest(flight, rules) {
+        const it = solver(flight, rules);
+        let result;
+        do {
+          result = it.next();
+        } while (!result.done);
+        return result.value;
+      }
+
+      const best = solveBest(igcData, customXContestRules);
+
+      console.log('\n=== XC Scoring Debug ===');
+      console.log('Multipliers from .env:', customMultipliers);
+      console.log('Free Triangle closing distance:', parseFloat(process.env.XC_FREE_TRIANGLE_CLOSING || 0.1));
+      console.log('Best result:', {
+        score: best?.score,
+        distanceKm: best?.scoreInfo?.distance,
+        type: best?.opt?.scoring?.name,
+        multiplier: best?.opt?.scoring?.multiplier
+      });
+
+      if (best && best.scoreInfo) {
+        const rulesByCode = {};
+        for (const rule of customXContestRules) {
+          if (!rulesByCode[rule.code]) {
+            rulesByCode[rule.code] = rule;
           }
+        }
+
+        const perType = {};
+        let actualBest = null;
+        let actualBestScore = 0;
+
+        for (const [code, rule] of Object.entries(rulesByCode)) {
+          try {
+            const r = solveBest(igcData, [rule]);
+            if (r && r.scoreInfo) {
+              const distanceKm = r.scoreInfo.distance;
+              const recalculatedScore = distanceKm * r.opt.scoring.multiplier;
+
+              console.log(`Type ${code} (${r.opt.scoring.name}):`, {
+                libraryScore: r.score,
+                distanceKm: distanceKm.toFixed(3),
+                multiplier: r.opt.scoring.multiplier,
+                recalculatedScore: recalculatedScore.toFixed(3)
+              });
+
+              perType[code] = {
+                name: r.opt.scoring.name,
+                score: recalculatedScore,
+                distance: r.scoreInfo.distance
+              };
+
+              if (recalculatedScore > actualBestScore) {
+                actualBestScore = recalculatedScore;
+                actualBest = {
+                  score: recalculatedScore,
+                  distance: r.scoreInfo.distance,
+                  type: r.opt.scoring.name,
+                  multiplier: r.opt.scoring.multiplier
+                };
+              }
+            }
+          } catch (e) {
+            console.log(`Error solving type ${code}:`, e.message);
+          }
+        }
+
+        console.log('Best score after recalculation:', {
+          type: actualBest.type,
+          distanceKm: actualBest.distance.toFixed(3),
+          multiplier: actualBest.multiplier,
+          score: actualBest.score.toFixed(3)
+        });
+        console.log('======================\n');
+
+        xcScore = {
+          score: actualBest.score,
+          distance: actualBest.distance,
+          type: actualBest.type,
+          multiplier: actualBest.multiplier,
+          types: perType
         };
       }
     } catch (error) {
       console.error('Error calculating XC score:', error.message);
+      console.error(error.stack);
     }
 
     const flightInfo = {
