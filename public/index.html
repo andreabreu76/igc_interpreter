@@ -386,6 +386,44 @@
       </div>
     </div>
 
+    <div class="output-container" id="scoreContainer" style="display: none;">
+      <div class="output-header" id="scoreHeader">
+        <span class="output-title">Score XC</span>
+        <span class="toggle-icon">▼</span>
+      </div>
+      <div class="summary-grid" id="scoreGrid">
+        <div class="summary-item" style="grid-column: 1 / -1; background: #2d2d2d; padding: 15px;">
+          <div class="summary-label" style="font-size: 14px;">Melhor Score</div>
+          <div style="display: flex; gap: 20px; margin-top: 10px;">
+            <div>
+              <div class="summary-value" id="bestScore" style="font-size: 24px; color: #ffc107;">-</div>
+              <div style="color: #858585; font-size: 12px;" id="bestScoreType">-</div>
+            </div>
+            <div>
+              <div style="color: #858585; font-size: 12px;">Distância</div>
+              <div class="summary-value" id="bestDistance" style="font-size: 18px;">-<span class="summary-unit">km</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-label">Free Distance</div>
+          <div class="summary-value" id="scoreFreeDistance" style="font-size: 14px;">-</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-label">Free Triangle</div>
+          <div class="summary-value" id="scoreFreeTriangle" style="font-size: 14px;">-</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-label">Flat Triangle</div>
+          <div class="summary-value" id="scoreFlatTriangle" style="font-size: 14px;">-</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-label">FAI Triangle</div>
+          <div class="summary-value" id="scoreFaiTriangle" style="font-size: 14px;">-</div>
+        </div>
+      </div>
+    </div>
+
     <div class="output-container" id="mapContainer">
       <div class="output-header" id="mapHeader">
         <span class="output-title">Mapa do Voo</span>
@@ -426,6 +464,9 @@
     const summaryContainer = document.getElementById('summaryContainer');
     const summaryHeader = document.getElementById('summaryHeader');
     const summaryGrid = document.getElementById('summaryGrid');
+    const scoreContainer = document.getElementById('scoreContainer');
+    const scoreHeader = document.getElementById('scoreHeader');
+    const scoreGrid = document.getElementById('scoreGrid');
     const chartContainer = document.getElementById('chartContainer');
     const chartHeader = document.getElementById('chartHeader');
     const chartContent = document.getElementById('chartContent');
@@ -451,6 +492,11 @@
     summaryHeader.addEventListener('click', () => {
       summaryHeader.classList.toggle('collapsed');
       summaryGrid.classList.toggle('collapsed');
+    });
+
+    scoreHeader.addEventListener('click', () => {
+      scoreHeader.classList.toggle('collapsed');
+      scoreGrid.classList.toggle('collapsed');
     });
 
     chartHeader.addEventListener('click', () => {
@@ -526,6 +572,13 @@
           summaryContainer.classList.add('show');
           summaryHeader.classList.remove('collapsed');
           summaryGrid.classList.remove('collapsed');
+
+          if (data.xcScore) {
+            updateScores(data.xcScore);
+            scoreContainer.style.display = 'block';
+            scoreHeader.classList.remove('collapsed');
+            scoreGrid.classList.remove('collapsed');
+          }
 
           createFlightChart(data.fixes);
           chartContainer.classList.add('show');
@@ -625,6 +678,43 @@
         `${summary.flightTime}<span class="summary-unit">min</span>`;
       document.getElementById('altitudeGain').innerHTML =
         `${summary.altitudeGain}<span class="summary-unit">m</span>`;
+    }
+
+    function updateScores(xcScore) {
+      if (!xcScore) return;
+
+      document.getElementById('bestScore').textContent = xcScore.score.toFixed(2);
+      document.getElementById('bestScoreType').textContent = xcScore.type;
+      document.getElementById('bestDistance').innerHTML =
+        `${xcScore.distance.toFixed(2)}<span class="summary-unit">km</span>`;
+
+      if (xcScore.optimal.freeDistance) {
+        document.getElementById('scoreFreeDistance').innerHTML =
+          `${xcScore.optimal.freeDistance.score.toFixed(2)} <span class="summary-unit">(${xcScore.optimal.freeDistance.distance.toFixed(2)} km)</span>`;
+      } else {
+        document.getElementById('scoreFreeDistance').textContent = '-';
+      }
+
+      if (xcScore.optimal.freeTriangle) {
+        document.getElementById('scoreFreeTriangle').innerHTML =
+          `${xcScore.optimal.freeTriangle.score.toFixed(2)} <span class="summary-unit">(${xcScore.optimal.freeTriangle.distance.toFixed(2)} km)</span>`;
+      } else {
+        document.getElementById('scoreFreeTriangle').textContent = '-';
+      }
+
+      if (xcScore.optimal.flatTriangle) {
+        document.getElementById('scoreFlatTriangle').innerHTML =
+          `${xcScore.optimal.flatTriangle.score.toFixed(2)} <span class="summary-unit">(${xcScore.optimal.flatTriangle.distance.toFixed(2)} km)</span>`;
+      } else {
+        document.getElementById('scoreFlatTriangle').textContent = '-';
+      }
+
+      if (xcScore.optimal.faiTriangle) {
+        document.getElementById('scoreFaiTriangle').innerHTML =
+          `${xcScore.optimal.faiTriangle.score.toFixed(2)} <span class="summary-unit">(${xcScore.optimal.faiTriangle.distance.toFixed(2)} km)</span>`;
+      } else {
+        document.getElementById('scoreFaiTriangle').textContent = '-';
+      }
     }
 
     function createFlightChart(fixes) {
