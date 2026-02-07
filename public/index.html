@@ -899,10 +899,6 @@
     function updateMapMarker(index) {
       const fix = flightData.fixes[index];
 
-      if (currentMarker) {
-        flightMap.removeLayer(currentMarker);
-      }
-
       let speed = 0;
       if (index > 0) {
         const prevFix = flightData.fixes[index - 1];
@@ -921,12 +917,6 @@
         timeZone: 'UTC'
       });
 
-      const markerIcon = L.divIcon({
-        className: 'current-position-marker',
-        html: '<div style="background: #ffc107; width: 16px; height: 16px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 10px rgba(255,193,7,0.5);"></div>',
-        iconSize: [16, 16]
-      });
-
       const popupContent = `
         <div class="flight-info-popup">
           <div><span class="flight-info-label">ALT</span><span class="flight-info-value">${fix.gpsAltitude || 0}m</span></div>
@@ -935,10 +925,21 @@
         </div>
       `;
 
-      currentMarker = L.marker([fix.latitude, fix.longitude], { icon: markerIcon })
-        .bindPopup(popupContent)
-        .addTo(flightMap)
-        .openPopup();
+      if (!currentMarker) {
+        const markerIcon = L.divIcon({
+          className: 'current-position-marker',
+          html: '<div style="background: #ffc107; width: 16px; height: 16px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 10px rgba(255,193,7,0.5);"></div>',
+          iconSize: [16, 16]
+        });
+
+        currentMarker = L.marker([fix.latitude, fix.longitude], { icon: markerIcon })
+          .bindPopup(popupContent, { autoClose: false, closeOnClick: false })
+          .addTo(flightMap)
+          .openPopup();
+      } else {
+        currentMarker.setLatLng([fix.latitude, fix.longitude]);
+        currentMarker.setPopupContent(popupContent);
+      }
     }
 
     function stopAnimation() {
