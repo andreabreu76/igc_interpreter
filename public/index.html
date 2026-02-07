@@ -919,11 +919,14 @@
 
         currentMarker = L.marker([fix.latitude, fix.longitude], { icon: markerIcon })
           .bindPopup(popupContent, { autoClose: false, closeOnClick: false })
-          .addTo(flightMap)
-          .openPopup();
+          .addTo(flightMap);
       } else {
         currentMarker.setLatLng([fix.latitude, fix.longitude]);
         currentMarker.setPopupContent(popupContent);
+      }
+
+      if (!currentMarker.isPopupOpen()) {
+        currentMarker.openPopup();
       }
     }
 
