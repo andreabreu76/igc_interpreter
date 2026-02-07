@@ -201,6 +201,29 @@
       display: none;
     }
 
+    .chart-section {
+      margin-bottom: 30px;
+    }
+
+    .chart-section:last-child {
+      margin-bottom: 0;
+    }
+
+    .chart-section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #3e3e42;
+    }
+
+    .chart-section-title {
+      color: #569cd6;
+      font-size: 14px;
+      font-weight: bold;
+    }
+
     .chart-controls {
       display: flex;
       gap: 10px;
@@ -451,14 +474,33 @@
 
     <div class="output-container" id="chartContainer">
       <div class="output-header" id="chartHeader">
-        <span class="output-title">Gráfico do Voo</span>
+        <span class="output-title">Gráficos do Voo</span>
         <span class="toggle-icon">▼</span>
       </div>
       <div class="chart-container" id="chartContent">
-        <div class="chart-controls">
-          <button class="play-btn" id="playBtn" disabled>Play</button>
+        <div class="chart-section">
+          <div class="chart-section-header">
+            <span class="chart-section-title">Altitude</span>
+            <div class="chart-controls">
+              <button class="play-btn" id="playBtn" disabled>Play</button>
+            </div>
+          </div>
+          <canvas id="altitudeChart"></canvas>
         </div>
-        <canvas id="flightChart"></canvas>
+
+        <div class="chart-section">
+          <div class="chart-section-header">
+            <span class="chart-section-title">Velocidade</span>
+          </div>
+          <canvas id="speedChart"></canvas>
+        </div>
+
+        <div class="chart-section">
+          <div class="chart-section-header">
+            <span class="chart-section-title">Vario</span>
+          </div>
+          <canvas id="varioChart"></canvas>
+        </div>
       </div>
     </div>
 
@@ -496,7 +538,9 @@
     const errorDiv = document.getElementById('error');
     const playBtn = document.getElementById('playBtn');
 
-    let flightChart = null;
+    let altitudeChart = null;
+    let speedChart = null;
+    let varioChart = null;
     let flightData = null;
     let flightMap = null;
     let flightPath = null;
@@ -597,7 +641,9 @@
             scoreGrid.classList.remove('collapsed');
           }
 
-          createFlightChart(data.fixes);
+          createAltitudeChart(data.fixes);
+          createSpeedChart(data.fixes);
+          createVarioChart(data.fixes);
           chartContainer.classList.add('show');
           chartHeader.classList.remove('collapsed');
           chartContent.classList.remove('collapsed');
@@ -808,12 +854,12 @@
       xcTurnpointsLayer.addTo(flightMap);
     }
 
-    function createFlightChart(fixes) {
-      if (flightChart) {
-        flightChart.destroy();
+    function createAltitudeChart(fixes) {
+      if (altitudeChart) {
+        altitudeChart.destroy();
       }
 
-      const ctx = document.getElementById('flightChart').getContext('2d');
+      const ctx = document.getElementById('altitudeChart').getContext('2d');
 
       const times = fixes.map(f => {
         const time = new Date(f.timestamp);
@@ -837,7 +883,7 @@
         return baseGround + variation;
       });
 
-      flightChart = new Chart(ctx, {
+      altitudeChart = new Chart(ctx, {
         type: 'line',
         data: {
           labels: times,
@@ -930,9 +976,172 @@
         }
       });
 
-      flightChart.altitudes = altitudesGPS;
+      altitudeChart.altitudes = altitudesGPS;
       currentIndex = 0;
       playBtn.disabled = false;
+    }
+
+    function createSpeedChart(fixes) {
+      if (speedChart) {
+        speedChart.destroy();
+      }
+
+      const ctx = document.getElementById('speedChart').getContext('2d');
+
+      const times = fixes.map(f => {
+        const time = new Date(f.timestamp);
+        return time.toLocaleTimeString('pt-BR', {
+          hour: '2-digit',
+          minute: '2-digit',
+          timeZone: 'UTC'
+        });
+      });
+
+      const speeds = [];
+      for (let i = 1; i < fixes.length; i++) {
+        const prev = fixes[i - 1];
+        const curr = fixes[i];
+        const distance = calculateDistance(prev.latitude, prev.longitude, curr.latitude, curr.longitude);
+        const timeDiff = (new Date(curr.timestamp) - new Date(prev.timestamp)) / 1000;
+        const speed = timeDiff > 0 ? (distance / timeDiff) * 3.6 : 0;
+        speeds.push(Math.min(speed, 200));
+      }
+      speeds.unshift(0);
+
+      speedChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: times,
+          datasets: [{
+            label: 'Velocidade (km/h)',
+            data: speeds,
+            borderColor: '#4ec9b0',
+            backgroundColor: 'transparent',
+            fill: false,
+            tension: 0.4,
+            pointRadius: 0,
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          animation: false,
+          scales: {
+            x: {
+              display: true,
+              title: {
+                display: true,
+                text: 'Horário',
+                color: '#858585'
+              },
+              ticks: {
+                color: '#858585',
+                maxTicksLimit: 15
+              },
+              grid: { color: '#3e3e42' }
+            },
+            y: {
+              display: true,
+              title: {
+                display: true,
+                text: 'Velocidade (km/h)',
+                color: '#858585'
+              },
+              ticks: { color: '#858585' },
+              grid: { color: '#3e3e42' }
+            }
+          },
+          plugins: {
+            legend: {
+              labels: { color: '#d4d4d4' }
+            }
+          }
+        }
+      });
+    }
+
+    function createVarioChart(fixes) {
+      if (varioChart) {
+        varioChart.destroy();
+      }
+
+      const ctx = document.getElementById('varioChart').getContext('2d');
+
+      const times = fixes.map(f => {
+        const time = new Date(f.timestamp);
+        return time.toLocaleTimeString('pt-BR', {
+          hour: '2-digit',
+          minute: '2-digit',
+          timeZone: 'UTC'
+        });
+      });
+
+      const varios = [];
+      for (let i = 1; i < fixes.length; i++) {
+        const prev = fixes[i - 1];
+        const curr = fixes[i];
+        const altDiff = (curr.gpsAltitude || 0) - (prev.gpsAltitude || 0);
+        const timeDiff = (new Date(curr.timestamp) - new Date(prev.timestamp)) / 1000;
+        const vario = timeDiff > 0 ? altDiff / timeDiff : 0;
+        varios.push(Math.max(-10, Math.min(10, vario)));
+      }
+      varios.unshift(0);
+
+      varioChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: times,
+          datasets: [{
+            label: 'Vario (m/s)',
+            data: varios,
+            borderColor: '#ce9178',
+            backgroundColor: (context) => {
+              const value = context.parsed?.y;
+              return value >= 0 ? 'rgba(76, 201, 176, 0.2)' : 'rgba(231, 76, 60, 0.2)';
+            },
+            fill: 'origin',
+            tension: 0.4,
+            pointRadius: 0,
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          animation: false,
+          scales: {
+            x: {
+              display: true,
+              title: {
+                display: true,
+                text: 'Horário',
+                color: '#858585'
+              },
+              ticks: {
+                color: '#858585',
+                maxTicksLimit: 15
+              },
+              grid: { color: '#3e3e42' }
+            },
+            y: {
+              display: true,
+              title: {
+                display: true,
+                text: 'Taxa de subida/descida (m/s)',
+                color: '#858585'
+              },
+              ticks: { color: '#858585' },
+              grid: { color: '#3e3e42' }
+            }
+          },
+          plugins: {
+            legend: {
+              labels: { color: '#d4d4d4' }
+            }
+          }
+        }
+      });
     }
 
     function createFlightMap(fixes) {
@@ -1027,7 +1236,7 @@
     }
 
     function startAnimation() {
-      if (currentIndex >= flightChart.altitudes.length) {
+      if (currentIndex >= altitudeChart.altitudes.length) {
         currentIndex = 0;
       }
 
@@ -1035,16 +1244,16 @@
       const speed = 2;
 
       animationInterval = setInterval(() => {
-        if (currentIndex < flightChart.altitudes.length) {
-          const markerData = new Array(flightChart.altitudes.length).fill(null);
-          markerData[currentIndex] = flightChart.altitudes[currentIndex];
+        if (currentIndex < altitudeChart.altitudes.length) {
+          const markerData = new Array(altitudeChart.altitudes.length).fill(null);
+          markerData[currentIndex] = altitudeChart.altitudes[currentIndex];
 
-          flightChart.data.datasets[3].data = markerData;
-          flightChart.data.datasets[3].pointRadius = markerData.map((v, i) =>
+          altitudeChart.data.datasets[3].data = markerData;
+          altitudeChart.data.datasets[3].pointRadius = markerData.map((v, i) =>
             i === currentIndex ? 8 : 0
           );
 
-          flightChart.update('none');
+          altitudeChart.update('none');
 
           if (flightMap && flightData) {
             updateMapMarker(currentIndex);
@@ -1054,9 +1263,9 @@
         } else {
           stopAnimation();
           playBtn.textContent = 'Replay';
-          flightChart.data.datasets[3].data = new Array(flightChart.altitudes.length).fill(null);
-          flightChart.data.datasets[3].pointRadius = 0;
-          flightChart.update('none');
+          altitudeChart.data.datasets[3].data = new Array(altitudeChart.altitudes.length).fill(null);
+          altitudeChart.data.datasets[3].pointRadius = 0;
+          altitudeChart.update('none');
 
           if (currentMarker && flightMap) {
             currentMarker.closePopup();
@@ -1118,7 +1327,7 @@
       if (animationInterval) {
         clearInterval(animationInterval);
         animationInterval = null;
-        if (currentIndex < flightChart?.altitudes?.length) {
+        if (currentIndex < altitudeChart?.altitudes?.length) {
           playBtn.textContent = 'Play';
         }
       }
