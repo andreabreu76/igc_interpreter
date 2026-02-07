@@ -875,7 +875,7 @@
           flightChart.update('none');
 
           if (currentMarker && flightMap) {
-            flightMap.removeLayer(currentMarker);
+            currentMarker.closePopup();
           }
         }
       }, speed);
