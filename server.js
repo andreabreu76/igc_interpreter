@@ -2,6 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const fs = require('fs').promises;
 const IGCParser = require('igc-parser');
+const scorer = require('igc-xc-score');
 
 const app = express();
 const upload = multer({ dest: 'uploads/' });
@@ -20,6 +21,39 @@ app.post('/upload', upload.single('igcFile'), async (req, res) => {
 
     const summary = calculateFlightSummary(igcData.fixes, igcData);
 
+    let xcScore = null;
+    try {
+      const score = await scorer.score(fileContent, { scoring: 'XContest' });
+      if (score && score.opt) {
+        xcScore = {
+          score: score.opt.score,
+          distance: score.opt.distance / 1000,
+          type: score.opt.scoreInfo?.name || score.opt.type,
+          multiplier: score.opt.scoreInfo?.multiplier || 1,
+          optimal: {
+            freeDistance: score.result?.freeDistance ? {
+              distance: score.result.freeDistance.distance / 1000,
+              score: score.result.freeDistance.score
+            } : null,
+            freeTriangle: score.result?.freeTriangle ? {
+              distance: score.result.freeTriangle.distance / 1000,
+              score: score.result.freeTriangle.score
+            } : null,
+            flatTriangle: score.result?.flatTriangle ? {
+              distance: score.result.flatTriangle.distance / 1000,
+              score: score.result.flatTriangle.score
+            } : null,
+            faiTriangle: score.result?.faiTriangle ? {
+              distance: score.result.faiTriangle.distance / 1000,
+              score: score.result.faiTriangle.score
+            } : null
+          }
+        };
+      }
+    } catch (error) {
+      console.error('Error calculating XC score:', error);
+    }
+
     const flightInfo = {
       pilot: igcData.pilot,
       copilot: igcData.copilot,
@@ -35,6 +69,7 @@ app.post('/upload', upload.single('igcFile'), async (req, res) => {
       duration: calculateDuration(igcData.fixes),
       task: igcData.task,
       summary,
+      xcScore,
       fixes: igcData.fixes
     };
 
