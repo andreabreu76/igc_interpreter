@@ -795,6 +795,28 @@
         .bindPopup('Fim')
         .addTo(flightMap);
 
+      L.Control.FitBounds = L.Control.extend({
+        onAdd: function(map) {
+          const btn = L.DomUtil.create('button', 'leaflet-bar leaflet-control');
+          btn.innerHTML = '🎯';
+          btn.style.fontSize = '18px';
+          btn.style.width = '30px';
+          btn.style.height = '30px';
+          btn.style.cursor = 'pointer';
+          btn.style.backgroundColor = 'white';
+          btn.style.border = '2px solid rgba(0,0,0,0.2)';
+          btn.title = 'Enquadrar Voo';
+
+          btn.onclick = function() {
+            flightMap.fitBounds(flightPath.getBounds(), { padding: [50, 50] });
+          };
+
+          return btn;
+        }
+      });
+
+      new L.Control.FitBounds({ position: 'topleft' }).addTo(flightMap);
+
       setTimeout(() => {
         flightMap.invalidateSize();
         flightMap.fitBounds(flightPath.getBounds(), { padding: [50, 50] });
@@ -866,6 +888,24 @@
         flightMap.removeLayer(currentMarker);
       }
 
+      let speed = 0;
+      if (index > 0) {
+        const prevFix = flightData.fixes[index - 1];
+        const dist = calculateDistance(prevFix.latitude, prevFix.longitude, fix.latitude, fix.longitude);
+        const timeDiff = (new Date(fix.timestamp) - new Date(prevFix.timestamp)) / 1000;
+        if (timeDiff > 0) {
+          speed = Math.round((dist / timeDiff) * 3600);
+        }
+      }
+
+      const time = new Date(fix.timestamp);
+      const timeStr = time.toLocaleTimeString('pt-BR', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        timeZone: 'UTC'
+      });
+
       const markerIcon = L.divIcon({
         className: 'current-position-marker',
         html: '<div style="background: #ffc107; width: 16px; height: 16px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 10px rgba(255,193,7,0.5);"></div>',
@@ -875,13 +915,15 @@
       const popupContent = `
         <div class="flight-info-popup">
           <div><span class="flight-info-label">ALT</span><span class="flight-info-value">${fix.gpsAltitude || 0}m</span></div>
-          <div><span class="flight-info-label">AGL</span><span class="flight-info-value">${fix.pressureAltitude || 0}m</span></div>
+          <div><span class="flight-info-label">VEL</span><span class="flight-info-value">${speed} km/h</span></div>
+          <div><span class="flight-info-label">HORA</span><span class="flight-info-value">${timeStr}</span></div>
         </div>
       `;
 
       currentMarker = L.marker([fix.latitude, fix.longitude], { icon: markerIcon })
         .bindPopup(popupContent)
-        .addTo(flightMap);
+        .addTo(flightMap)
+        .openPopup();
     }
 
     function stopAnimation() {
