@@ -417,6 +417,25 @@
           <div class="summary-label">FAI Triangle</div>
           <div class="summary-value" id="scoreFai" style="font-size: 14px;">-</div>
         </div>
+
+        <div style="grid-column: 1 / -1; margin-top: 20px; border-top: 1px solid #3e3e42; padding-top: 15px;">
+          <div style="color: #858585; font-size: 12px; margin-bottom: 10px;">Scoring Factors Used: XC scoring</div>
+          <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+            <thead>
+              <tr style="border-bottom: 1px solid #3e3e42;">
+                <th style="text-align: left; padding: 8px; color: #858585;">Type of Flight</th>
+                <th style="text-align: center; padding: 8px; color: #858585;">Factor</th>
+                <th style="text-align: right; padding: 8px; color: #858585;">XC distance</th>
+                <th style="text-align: right; padding: 8px; color: #858585;">XC Score</th>
+              </tr>
+            </thead>
+            <tbody id="optimizationTable">
+              <tr>
+                <td colspan="4" style="text-align: center; padding: 20px; color: #858585;">-</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
 
@@ -697,6 +716,44 @@
         } else {
           el.textContent = '-';
         }
+      }
+
+      const optimizationTable = document.getElementById('optimizationTable');
+      if (xcScore.types) {
+        const typeNames = {
+          od: 'Free Flight',
+          tri: 'Free Triangle',
+          fai: 'FAI Triangle'
+        };
+
+        const multipliers = {
+          od: xcScore.multiplier || 1.5,
+          tri: xcScore.multiplier || 1.75,
+          fai: xcScore.multiplier || 2.0
+        };
+
+        let rows = '';
+        for (const [code, name] of Object.entries(typeNames)) {
+          if (xcScore.types[code]) {
+            const t = xcScore.types[code];
+            const isBest = t.name === xcScore.type;
+            const marker = isBest ? '(*) ' : '';
+            const rowStyle = isBest ? 'font-weight: bold;' : '';
+
+            const factor = t.score / t.distance;
+
+            rows += `
+              <tr style="${rowStyle}">
+                <td style="padding: 8px;">${marker}${name}</td>
+                <td style="padding: 8px; text-align: center;">x${factor.toFixed(2)}</td>
+                <td style="padding: 8px; text-align: right;">${t.distance.toFixed(3)} km</td>
+                <td style="padding: 8px; text-align: right;">${t.score.toFixed(2)}</td>
+              </tr>
+            `;
+          }
+        }
+
+        optimizationTable.innerHTML = rows;
       }
     }
 
