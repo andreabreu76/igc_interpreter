@@ -2,7 +2,6 @@ const express = require('express');
 const multer = require('multer');
 const fs = require('fs').promises;
 const IGCParser = require('igc-parser');
-const scorer = require('igc-xc-score');
 
 const app = express();
 const upload = multer({ dest: 'uploads/' });
@@ -23,35 +22,37 @@ app.post('/upload', upload.single('igcFile'), async (req, res) => {
 
     let xcScore = null;
     try {
-      const score = await scorer.score(fileContent, { scoring: 'XContest' });
-      if (score && score.opt) {
+      const { solver, scoringRules } = await import('igc-xc-score');
+      const result = solver(igcData, scoringRules.XContest).next().value;
+
+      if (result && result.scoreInfo) {
         xcScore = {
-          score: score.opt.score,
-          distance: score.opt.distance / 1000,
-          type: score.opt.scoreInfo?.name || score.opt.type,
-          multiplier: score.opt.scoreInfo?.multiplier || 1,
+          score: result.scoreInfo.points,
+          distance: result.scoreInfo.distance / 1000,
+          type: result.scoreInfo.name,
+          multiplier: result.scoreInfo.multiplier || 1,
           optimal: {
-            freeDistance: score.result?.freeDistance ? {
-              distance: score.result.freeDistance.distance / 1000,
-              score: score.result.freeDistance.score
+            freeDistance: result.optimal?.flight ? {
+              distance: result.optimal.flight.distance / 1000,
+              score: result.optimal.flight.score
             } : null,
-            freeTriangle: score.result?.freeTriangle ? {
-              distance: score.result.freeTriangle.distance / 1000,
-              score: score.result.freeTriangle.score
+            freeTriangle: result.optimal?.triangle ? {
+              distance: result.optimal.triangle.distance / 1000,
+              score: result.optimal.triangle.score
             } : null,
-            flatTriangle: score.result?.flatTriangle ? {
-              distance: score.result.flatTriangle.distance / 1000,
-              score: score.result.flatTriangle.score
+            flatTriangle: result.optimal?.flatTriangle ? {
+              distance: result.optimal.flatTriangle.distance / 1000,
+              score: result.optimal.flatTriangle.score
             } : null,
-            faiTriangle: score.result?.faiTriangle ? {
-              distance: score.result.faiTriangle.distance / 1000,
-              score: score.result.faiTriangle.score
+            faiTriangle: result.optimal?.faiTriangle ? {
+              distance: result.optimal.faiTriangle.distance / 1000,
+              score: result.optimal.faiTriangle.score
             } : null
           }
         };
       }
     } catch (error) {
-      console.error('Error calculating XC score:', error);
+      console.error('Error calculating XC score:', error.message);
     }
 
     const flightInfo = {
