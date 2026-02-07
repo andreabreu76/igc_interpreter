@@ -78,6 +78,7 @@ app.post('/upload', upload.single('igcFile'), async (req, res) => {
         const perType = {};
         let actualBest = null;
         let actualBestScore = 0;
+        let actualBestResult = null;
 
         for (const [code, rule] of Object.entries(rulesByCode)) {
           try {
@@ -101,6 +102,7 @@ app.post('/upload', upload.single('igcFile'), async (req, res) => {
 
               if (recalculatedScore > actualBestScore) {
                 actualBestScore = recalculatedScore;
+                actualBestResult = r;
                 actualBest = {
                   score: recalculatedScore,
                   distance: r.scoreInfo.distance,
@@ -120,6 +122,20 @@ app.post('/upload', upload.single('igcFile'), async (req, res) => {
           multiplier: actualBest.multiplier,
           score: actualBest.score.toFixed(3)
         });
+
+        const turnpoints = actualBestResult.scoreInfo.tp?.map(p => ({
+          lat: p.y,
+          lng: p.x,
+          fixIndex: p.r
+        })) || [];
+
+        const closingPoints = actualBestResult.scoreInfo.cp ? {
+          in: { lat: actualBestResult.scoreInfo.cp.in.y, lng: actualBestResult.scoreInfo.cp.in.x },
+          out: { lat: actualBestResult.scoreInfo.cp.out.y, lng: actualBestResult.scoreInfo.cp.out.x }
+        } : null;
+
+        console.log('Turnpoints for visualization:', turnpoints);
+        console.log('Closing points:', closingPoints);
         console.log('======================\n');
 
         xcScore = {
@@ -127,7 +143,9 @@ app.post('/upload', upload.single('igcFile'), async (req, res) => {
           distance: actualBest.distance,
           type: actualBest.type,
           multiplier: actualBest.multiplier,
-          types: perType
+          types: perType,
+          turnpoints: turnpoints,
+          closingPoints: closingPoints
         };
       }
     } catch (error) {

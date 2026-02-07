@@ -484,6 +484,7 @@
     let currentMarker = null;
     let animationInterval = null;
     let currentIndex = 0;
+    let currentXCScore = null;
 
     summaryHeader.addEventListener('click', () => {
       summaryHeader.classList.toggle('collapsed');
@@ -570,6 +571,7 @@
           summaryGrid.classList.remove('collapsed');
 
           if (data.xcScore) {
+            currentXCScore = data.xcScore;
             updateScores(data.xcScore);
             scoreContainer.style.display = 'block';
             scoreHeader.classList.remove('collapsed');
@@ -694,6 +696,64 @@
           el.textContent = '-';
         }
       }
+    }
+
+    let xcTriangleLayer = null;
+    let xcTurnpointsLayer = null;
+
+    function drawXCTriangle(xcScore) {
+      console.log('drawXCTriangle called with:', xcScore);
+
+      if (!xcScore || !xcScore.turnpoints || xcScore.turnpoints.length === 0) {
+        console.log('No turnpoints found');
+        return;
+      }
+      if (!flightMap) {
+        console.log('flightMap not initialized yet');
+        return;
+      }
+
+      console.log('Drawing triangle with', xcScore.turnpoints.length, 'turnpoints');
+
+      if (xcTriangleLayer) {
+        flightMap.removeLayer(xcTriangleLayer);
+      }
+      if (xcTurnpointsLayer) {
+        flightMap.removeLayer(xcTurnpointsLayer);
+      }
+
+      const turnpoints = xcScore.turnpoints;
+      const triangleCoords = turnpoints.map(tp => [tp.lat, tp.lng]);
+      console.log('Triangle coords:', triangleCoords);
+
+      if (xcScore.closingPoints) {
+        triangleCoords.push([xcScore.closingPoints.in.lat, xcScore.closingPoints.in.lng]);
+      } else {
+        triangleCoords.push(triangleCoords[0]);
+      }
+
+      xcTriangleLayer = L.polygon(triangleCoords, {
+        color: '#9b59b6',
+        weight: 2,
+        opacity: 0.8,
+        fillOpacity: 0.1,
+        dashArray: '5, 10'
+      }).addTo(flightMap);
+
+      const tpIcon = L.divIcon({
+        className: 'tp-marker',
+        html: '<div style="background: #9b59b6; width: 10px; height: 10px; border-radius: 50%; border: 2px solid white;"></div>',
+        iconSize: [10, 10]
+      });
+
+      xcTurnpointsLayer = L.layerGroup();
+      turnpoints.forEach((tp, i) => {
+        L.marker([tp.lat, tp.lng], { icon: tpIcon })
+          .bindPopup(`<b>TP${i + 1}</b><br>Lat: ${tp.lat.toFixed(5)}<br>Lng: ${tp.lng.toFixed(5)}`)
+          .addTo(xcTurnpointsLayer);
+      });
+
+      xcTurnpointsLayer.addTo(flightMap);
     }
 
     function createFlightChart(fixes) {
@@ -889,6 +949,9 @@
       setTimeout(() => {
         flightMap.invalidateSize();
         flightMap.fitBounds(flightPath.getBounds(), { padding: [50, 50] });
+        if (currentXCScore) {
+          drawXCTriangle(currentXCScore);
+        }
       }, 200);
     }
 
