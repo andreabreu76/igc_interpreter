@@ -562,7 +562,7 @@
       if (summary.startPosition) {
         const startLat = summary.startPosition.latitude.toFixed(5);
         const startLon = summary.startPosition.longitude.toFixed(5);
-        document.getElementById('startPosition').textContent = `${startLat}, ${startLon}`;
+        document.getElementById('startPosition').textContent = 'Carregando...';
 
         const startTime = new Date(summary.startPosition.time);
         document.getElementById('startTime').textContent =
@@ -571,12 +571,17 @@
             minute: '2-digit',
             timeZone: 'UTC'
           });
+
+        reverseGeocode(summary.startPosition.latitude, summary.startPosition.longitude)
+          .then(location => {
+            document.getElementById('startPosition').textContent = location || `${startLat}, ${startLon}`;
+          });
       }
 
       if (summary.endPosition) {
         const endLat = summary.endPosition.latitude.toFixed(5);
         const endLon = summary.endPosition.longitude.toFixed(5);
-        document.getElementById('endPosition').textContent = `${endLat}, ${endLon}`;
+        document.getElementById('endPosition').textContent = 'Carregando...';
 
         const endTime = new Date(summary.endPosition.time);
         document.getElementById('endTime').textContent =
@@ -584,6 +589,11 @@
             hour: '2-digit',
             minute: '2-digit',
             timeZone: 'UTC'
+          });
+
+        reverseGeocode(summary.endPosition.latitude, summary.endPosition.longitude)
+          .then(location => {
+            document.getElementById('endPosition').textContent = location || `${endLat}, ${endLon}`;
           });
       }
 
@@ -865,6 +875,39 @@
         if (currentIndex < flightChart?.altitudes?.length) {
           playBtn.textContent = 'Play';
         }
+      }
+    }
+
+    async function reverseGeocode(lat, lon) {
+      try {
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`,
+          {
+            headers: {
+              'User-Agent': 'IGC-Interpreter/1.0'
+            }
+          }
+        );
+
+        if (!response.ok) return null;
+
+        const data = await response.json();
+
+        if (data.address) {
+          const parts = [];
+          if (data.address.road) parts.push(data.address.road);
+          if (data.address.suburb) parts.push(data.address.suburb);
+          if (data.address.city || data.address.town || data.address.village) {
+            parts.push(data.address.city || data.address.town || data.address.village);
+          }
+
+          return parts.join(', ') || data.display_name;
+        }
+
+        return data.display_name;
+      } catch (error) {
+        console.error('Geocoding error:', error);
+        return null;
       }
     }
   </script>
