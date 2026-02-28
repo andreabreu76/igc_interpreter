@@ -46,6 +46,9 @@
 - **cf7e5ee**: Tabela de otimização
 - **5596ed2**: Múltiplos gráficos (Altitude, Velocidade, Vario)
 
+### Fase 6: Camadas de Ascendência/Descendência (Commits 43-44)
+- **7d074ea**: Camadas de pontos coloridos por variação vertical e painel de toggles no mapa
+
 ---
 
 ## Formato IGC - Estrutura de Dados
@@ -413,7 +416,31 @@ for (let i = 1; i < fixes.length; i++) {
    }).addTo(map);
    ```
 
-2. **Triângulo XC**
+2. **Ascendência / Descendência**
+
+   Para cada fix (exceto o primeiro), calcula a diferença de altitude em relação ao fix anterior. Pontos são adicionados a layer groups independentes:
+
+   ```javascript
+   ascentLayer = L.layerGroup();
+   descentLayer = L.layerGroup();
+
+   for (let i = 1; i < fixes.length; i++) {
+     const altDiff = (fixes[i].gpsAltitude || 0) - (fixes[i - 1].gpsAltitude || 0);
+     if (altDiff === 0) continue;
+     const marker = L.circleMarker([fixes[i].latitude, fixes[i].longitude], {
+       radius: 4,
+       color: 'transparent',
+       fillColor: altDiff > 0 ? '#c39bd3' : '#f1948a',  // Lilás / Rosa
+       fillOpacity: 0.45
+     });
+     if (altDiff > 0) marker.addTo(ascentLayer); else marker.addTo(descentLayer);
+   }
+   ```
+
+   - **Lilás (#c39bd3)**: pontos de ascendência
+   - **Rosa (#f1948a)**: pontos de descendência
+
+3. **Triângulo XC**
    ```javascript
    const triangleCoords = turnpoints.map(tp => [tp.lat, tp.lng]);
    L.polygon(triangleCoords, {
@@ -425,7 +452,7 @@ for (let i = 1; i < fixes.length; i++) {
    }).addTo(map);
    ```
 
-3. **Marcadores**
+4. **Marcadores**
    - Decolagem: Verde (#4ec9b0)
    - Pouso: Vermelho (#dc3545)
    - Turnpoints: Roxo (#9b59b6)
@@ -463,7 +490,6 @@ const popupContent = `
 L.Control.FitBounds = L.Control.extend({
   onAdd: function(map) {
     const btn = L.DomUtil.create('button', 'leaflet-bar leaflet-control');
-    btn.innerHTML = '';
     btn.onclick = function() {
       map.fitBounds(flightPath.getBounds(), { padding: [50, 50] });
     };
@@ -471,6 +497,18 @@ L.Control.FitBounds = L.Control.extend({
   }
 });
 ```
+
+#### 6.5 Painel de Toggles (canto superior direito)
+
+Controle customizado Leaflet com três toggles para visibilidade independente das camadas:
+
+| Toggle | Camada | Cor indicador |
+|--------|--------|---------------|
+| Triangulo XC | xcTriangleLayer + xcTurnpointsLayer | Roxo (#9b59b6) |
+| Ascendencia | ascentLayer | Lila (#c39bd3) |
+| Descendencia | descentLayer | Rosa (#f1948a) |
+
+Ao clicar, o toggle remove ou adiciona a camada correspondente do mapa sem re-renderizar os dados. O indicador visual (dot) e o label escurecem quando desativado.
 
 ---
 
@@ -820,4 +858,4 @@ O **IGC Interpreter** é um laboratório funcional que demonstra:
 
 ---
 
-*Última atualização: 2025-02-06*
+*Última atualização: 2026-02-28*
