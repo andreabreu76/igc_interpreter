@@ -104,6 +104,33 @@
       transition: transform 0.3s;
     }
 
+    .output-header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .copy-json-btn {
+      background: #3e3e42;
+      color: #d4d4d4;
+      border: 1px solid #555;
+      padding: 4px 12px;
+      font-size: 12px;
+      cursor: pointer;
+      border-radius: 3px;
+      font-family: inherit;
+      transition: background 0.2s;
+    }
+
+    .copy-json-btn:hover {
+      background: #505050;
+    }
+
+    .copy-json-btn.copied {
+      background: #2d6b3f;
+      border-color: #3a8a50;
+    }
+
     .output-header.collapsed .toggle-icon {
       transform: rotate(-90deg);
     }
@@ -510,6 +537,9 @@
         <span class="toggle-icon">▼</span>
       </div>
       <div class="output" id="output">
+        <div style="display: flex; justify-content: flex-end; margin-bottom: 15px;">
+          <button class="copy-json-btn" id="copyJsonBtn">Copiar JSON</button>
+        </div>
         <pre id="jsonOutput"></pre>
       </div>
     </div>
@@ -548,6 +578,8 @@
     let animationInterval = null;
     let currentIndex = 0;
     let currentXCScore = null;
+    let ascentLayer = null;
+    let descentLayer = null;
 
     summaryHeader.addEventListener('click', () => {
       summaryHeader.classList.toggle('collapsed');
@@ -575,6 +607,20 @@
     outputHeader.addEventListener('click', () => {
       outputHeader.classList.toggle('collapsed');
       output.classList.toggle('collapsed');
+    });
+
+    const copyJsonBtn = document.getElementById('copyJsonBtn');
+    copyJsonBtn.addEventListener('click', () => {
+      const text = jsonOutput.textContent;
+      if (!text) return;
+      navigator.clipboard.writeText(text).then(() => {
+        copyJsonBtn.textContent = 'Copiado!';
+        copyJsonBtn.classList.add('copied');
+        setTimeout(() => {
+          copyJsonBtn.textContent = 'Copiar';
+          copyJsonBtn.classList.remove('copied');
+        }, 2000);
+      });
     });
 
     playBtn.addEventListener('click', toggleAnimation);
@@ -1164,6 +1210,24 @@
         opacity: 0.7
       }).addTo(flightMap);
 
+      ascentLayer = L.layerGroup();
+      descentLayer = L.layerGroup();
+
+      for (let i = 1; i < fixes.length; i++) {
+        const altDiff = (fixes[i].gpsAltitude || 0) - (fixes[i - 1].gpsAltitude || 0);
+        if (altDiff === 0) continue;
+        const marker = L.circleMarker([fixes[i].latitude, fixes[i].longitude], {
+          radius: 4,
+          color: 'transparent',
+          fillColor: altDiff > 0 ? '#c39bd3' : '#f1948a',
+          fillOpacity: 0.45
+        });
+        if (altDiff > 0) marker.addTo(ascentLayer); else marker.addTo(descentLayer);
+      }
+
+      ascentLayer.addTo(flightMap);
+      descentLayer.addTo(flightMap);
+
       const startIcon = L.divIcon({
         className: 'start-marker',
         html: '<div style="background: #4ec9b0; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white;"></div>',
@@ -1206,6 +1270,60 @@
       });
 
       new L.Control.FitBounds({ position: 'topleft' }).addTo(flightMap);
+
+      L.Control.Toggles = L.Control.extend({
+        onAdd: function(map) {
+          const container = L.DomUtil.create('div');
+          container.style.cssText = 'background:#2d2d2d;border:1px solid #3e3e42;padding:6px 10px;font-family:Courier New,monospace;font-size:11px;line-height:1.6;cursor:default;';
+          L.DomEvent.disableClickPropagation(container);
+
+          const items = [
+            { key: 'xc',   label: 'Triangulo XC',  color: '#9b59b6' },
+            { key: 'up',   label: 'Ascendencia',    color: '#c39bd3' },
+            { key: 'down', label: 'Descendencia',   color: '#f1948a' }
+          ];
+
+          items.forEach(item => {
+            const row = L.DomUtil.create('div', '', container);
+            row.style.cssText = 'display:flex;align-items:center;gap:6px;cursor:pointer;padding:2px 0;';
+            row.dataset.active = 'true';
+
+            const dot = L.DomUtil.create('span', '', row);
+            dot.style.cssText = `display:inline-block;width:10px;height:10px;border-radius:50%;background:${item.color};flex-shrink:0;`;
+
+            const label = L.DomUtil.create('span', '', row);
+            label.textContent = item.label;
+            label.style.color = '#d4d4d4';
+
+            row.onclick = function() {
+              const active = row.dataset.active === 'true';
+              row.dataset.active = active ? 'false' : 'true';
+              dot.style.opacity = active ? '0.3' : '1';
+              label.style.color = active ? '#555' : '#d4d4d4';
+
+              if (item.key === 'xc') {
+                if (active) {
+                  if (xcTriangleLayer) flightMap.removeLayer(xcTriangleLayer);
+                  if (xcTurnpointsLayer) flightMap.removeLayer(xcTurnpointsLayer);
+                } else {
+                  if (xcTriangleLayer) xcTriangleLayer.addTo(flightMap);
+                  if (xcTurnpointsLayer) xcTurnpointsLayer.addTo(flightMap);
+                }
+              } else if (item.key === 'up') {
+                if (active) ascentLayer && flightMap.removeLayer(ascentLayer);
+                else ascentLayer && ascentLayer.addTo(flightMap);
+              } else {
+                if (active) descentLayer && flightMap.removeLayer(descentLayer);
+                else descentLayer && descentLayer.addTo(flightMap);
+              }
+            };
+          });
+
+          return container;
+        }
+      });
+
+      new L.Control.Toggles({ position: 'topright' }).addTo(flightMap);
 
       setTimeout(() => {
         flightMap.invalidateSize();
