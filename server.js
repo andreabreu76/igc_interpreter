@@ -172,6 +172,43 @@ function haversineDistance(lat1, lon1, lat2, lon2) {
   return R * c;
 }
 
+function windowedVarioPass(fixes, windowSeconds) {
+  let maxVario = -Infinity;
+  let minVario = Infinity;
+
+  for (let i = 0; i < fixes.length - 1; i++) {
+    let j = i + 1;
+    while (j < fixes.length - 1) {
+      const timeDiff = (new Date(fixes[j].timestamp) - new Date(fixes[i].timestamp)) / 1000;
+      if (timeDiff >= windowSeconds) break;
+      j++;
+    }
+
+    const timeDiff = (new Date(fixes[j].timestamp) - new Date(fixes[i].timestamp)) / 1000;
+    if (timeDiff >= windowSeconds / 2) {
+      const altDiff = (fixes[j].gpsAltitude || 0) - (fixes[i].gpsAltitude || 0);
+      const vario = altDiff / timeDiff;
+      if (vario > maxVario) maxVario = vario;
+      if (vario < minVario) minVario = vario;
+    }
+  }
+
+  return { maxVario, minVario };
+}
+
+function calculateWindowedVario(fixes) {
+  const pass20 = windowedVarioPass(fixes, 20);
+  const pass15 = windowedVarioPass(fixes, 15);
+
+  const maxVario = pass20.maxVario;
+  const minVario = Math.min(pass20.minVario, pass15.minVario);
+
+  return {
+    maxVario: maxVario === -Infinity ? 0 : Math.round(maxVario * 10) / 10,
+    minVario: minVario === Infinity ? 0 : Math.round(minVario * 10) / 10
+  };
+}
+
 function calculateFlightSummary(fixes, igcData) {
   if (fixes.length < 2) {
     return {
@@ -223,6 +260,8 @@ function calculateFlightSummary(fixes, igcData) {
     }
   }
 
+  const { maxVario, minVario } = calculateWindowedVario(fixes);
+
   const flightTime = calculateDuration(fixes);
 
   const firstFix = fixes[0];
@@ -247,7 +286,9 @@ function calculateFlightSummary(fixes, igcData) {
     maxSpeed: Math.round(maxSpeed),
     totalDistance: Math.round(totalDistance * 10) / 10,
     flightTime,
-    altitudeGain: Math.round(totalClimb)
+    altitudeGain: Math.round(totalClimb),
+    maxVario: maxVario,
+    minVario: minVario
   };
 }
 
