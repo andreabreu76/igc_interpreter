@@ -365,7 +365,7 @@
     </div>
 
     <div class="error" id="error"></div>
-    <div class="loading" id="loading">Processando...</div>
+    <div class="loading" id="loading">Processando (inclui consulta de elevacao do terreno)...</div>
 
     <div class="output-container" id="summaryContainer">
       <div class="output-header" id="summaryHeader">
@@ -489,6 +489,64 @@
       </div>
     </div>
 
+    <div class="output-container" id="hikeContainer" style="display: none;">
+      <div class="output-header" id="hikeHeader">
+        <span class="output-title">Hike and Fly - Caminhada</span>
+        <span class="toggle-icon">&#9660;</span>
+      </div>
+      <div class="summary-grid" id="hikeGrid">
+        <div class="summary-item" style="border-left-color: #8B4513;">
+          <div class="summary-label">Duracao</div>
+          <div class="summary-value" id="hikeDuration">-<span class="summary-unit">min</span></div>
+        </div>
+        <div class="summary-item" style="border-left-color: #8B4513;">
+          <div class="summary-label">Distancia Percorrida</div>
+          <div class="summary-value" id="hikeDistance">-<span class="summary-unit">km</span></div>
+        </div>
+        <div class="summary-item" style="border-left-color: #8B4513;">
+          <div class="summary-label">Distancia em Linha Reta</div>
+          <div class="summary-value" id="hikeStraightLine">-<span class="summary-unit">km</span></div>
+        </div>
+        <div class="summary-item" style="border-left-color: #8B4513;">
+          <div class="summary-label">Velocidade Media</div>
+          <div class="summary-value" id="hikeAvgSpeed">-<span class="summary-unit">km/h</span></div>
+        </div>
+        <div class="summary-item" style="border-left-color: #8B4513;">
+          <div class="summary-label">Velocidade Maxima</div>
+          <div class="summary-value" id="hikeMaxSpeed">-<span class="summary-unit">km/h</span></div>
+        </div>
+        <div class="summary-item" style="border-left-color: #8B4513;">
+          <div class="summary-label">Pace</div>
+          <div class="summary-value" id="hikePace">-<span class="summary-unit">min/km</span></div>
+        </div>
+        <div class="summary-item" style="border-left-color: #8B4513;">
+          <div class="summary-label">Ganho de Altitude</div>
+          <div class="summary-value" id="hikeElevationGain">-<span class="summary-unit">m</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="output-container" id="totalContainer" style="display: none;">
+      <div class="output-header" id="totalHeader">
+        <span class="output-title">Hike and Fly - Totais</span>
+        <span class="toggle-icon">&#9660;</span>
+      </div>
+      <div class="summary-grid" id="totalGrid">
+        <div class="summary-item" style="border-left-color: #f39c12;">
+          <div class="summary-label">Duracao Total</div>
+          <div class="summary-value" id="totalDuration">-<span class="summary-unit">min</span></div>
+        </div>
+        <div class="summary-item" style="border-left-color: #f39c12;">
+          <div class="summary-label">Distancia em Linha Reta</div>
+          <div class="summary-value" id="totalStraightLine">-<span class="summary-unit">km</span></div>
+        </div>
+        <div class="summary-item" style="border-left-color: #f39c12;">
+          <div class="summary-label">Velocidade Media Geral</div>
+          <div class="summary-value" id="totalAvgSpeed">-<span class="summary-unit">km/h</span></div>
+        </div>
+      </div>
+    </div>
+
     <div class="output-container" id="mapContainer">
       <div class="output-header" id="mapHeader">
         <span class="output-title">Mapa do Voo</span>
@@ -580,6 +638,14 @@
     let currentXCScore = null;
     let ascentLayer = null;
     let descentLayer = null;
+    let hikeLayer = null;
+
+    const hikeContainer = document.getElementById('hikeContainer');
+    const hikeHeader = document.getElementById('hikeHeader');
+    const hikeGrid = document.getElementById('hikeGrid');
+    const totalContainer = document.getElementById('totalContainer');
+    const totalHeader = document.getElementById('totalHeader');
+    const totalGrid = document.getElementById('totalGrid');
 
     summaryHeader.addEventListener('click', () => {
       summaryHeader.classList.toggle('collapsed');
@@ -589,6 +655,16 @@
     scoreHeader.addEventListener('click', () => {
       scoreHeader.classList.toggle('collapsed');
       scoreGrid.classList.toggle('collapsed');
+    });
+
+    hikeHeader.addEventListener('click', () => {
+      hikeHeader.classList.toggle('collapsed');
+      hikeGrid.classList.toggle('collapsed');
+    });
+
+    totalHeader.addEventListener('click', () => {
+      totalHeader.classList.toggle('collapsed');
+      totalGrid.classList.toggle('collapsed');
     });
 
     chartHeader.addEventListener('click', () => {
@@ -687,14 +763,26 @@
             scoreGrid.classList.remove('collapsed');
           }
 
-          createAltitudeChart(data.fixes);
+          if (data.hikeAndFly && data.hikeAndFly.isHikeAndFly) {
+            updateHikePanel(data.hikeAndFly);
+            hikeContainer.style.display = 'block';
+            hikeContainer.classList.add('show');
+            totalContainer.style.display = 'block';
+            totalContainer.classList.add('show');
+          } else {
+            hikeContainer.style.display = 'none';
+            totalContainer.style.display = 'none';
+          }
+
+          const terrainData = data.hikeAndFly ? data.hikeAndFly.terrainElevations : null;
+          createAltitudeChart(data.fixes, terrainData);
           createSpeedChart(data.fixes);
           createVarioChart(data.fixes);
           chartContainer.classList.add('show');
           chartHeader.classList.remove('collapsed');
           chartContent.classList.remove('collapsed');
 
-          createFlightMap(data.fixes);
+          createFlightMap(data.fixes, data.hikeAndFly);
           mapContainer.classList.add('show');
           mapHeader.classList.remove('collapsed');
           mapContent.classList.remove('collapsed');
@@ -900,7 +988,7 @@
       xcTurnpointsLayer.addTo(flightMap);
     }
 
-    function createAltitudeChart(fixes) {
+    function createAltitudeChart(fixes, terrainElevations) {
       if (altitudeChart) {
         altitudeChart.destroy();
       }
@@ -919,15 +1007,7 @@
       const altitudesGPS = fixes.map(f => f.gpsAltitude || 0);
       const altitudesBaro = fixes.map(f => f.pressureAltitude || f.gpsAltitude || 0);
 
-      const minAlt = Math.min(...altitudesGPS, ...altitudesBaro);
-      const maxAlt = Math.max(...altitudesGPS, ...altitudesBaro);
-      const range = maxAlt - minAlt;
-
-      const ground = altitudesGPS.map((alt, i) => {
-        const baseGround = Math.max(0, minAlt - range * 0.1);
-        const variation = Math.sin(i / fixes.length * Math.PI * 3) * (range * 0.05);
-        return baseGround + variation;
-      });
+      const ground = terrainElevations || altitudesGPS.map(() => 0);
 
       altitudeChart = new Chart(ctx, {
         type: 'line',
@@ -1190,7 +1270,38 @@
       });
     }
 
-    function createFlightMap(fixes) {
+    function updateHikePanel(hikeAndFly) {
+      const hm = hikeAndFly.hikeMetrics;
+      const tm = hikeAndFly.totalMetrics;
+
+      if (hm) {
+        document.getElementById('hikeDuration').innerHTML =
+          `${hm.duration}<span class="summary-unit">min</span>`;
+        document.getElementById('hikeDistance').innerHTML =
+          `${hm.totalDistance}<span class="summary-unit">km</span>`;
+        document.getElementById('hikeStraightLine').innerHTML =
+          `${hm.straightLineDistance.toFixed(2)}<span class="summary-unit">km</span>`;
+        document.getElementById('hikeAvgSpeed').innerHTML =
+          `${hm.avgSpeed}<span class="summary-unit">km/h</span>`;
+        document.getElementById('hikeMaxSpeed').innerHTML =
+          `${hm.maxSpeed}<span class="summary-unit">km/h</span>`;
+        document.getElementById('hikePace').innerHTML =
+          `${hm.pace}<span class="summary-unit">min/km</span>`;
+        document.getElementById('hikeElevationGain').innerHTML =
+          `${hm.elevationGain}<span class="summary-unit">m</span>`;
+      }
+
+      if (tm) {
+        document.getElementById('totalDuration').innerHTML =
+          `${tm.duration}<span class="summary-unit">min</span>`;
+        document.getElementById('totalStraightLine').innerHTML =
+          `${tm.straightLineDistance}<span class="summary-unit">km</span>`;
+        document.getElementById('totalAvgSpeed').innerHTML =
+          `${tm.avgSpeed}<span class="summary-unit">km/h</span>`;
+      }
+    }
+
+    function createFlightMap(fixes, hikeAndFly) {
       if (flightMap) {
         flightMap.remove();
       }
@@ -1204,11 +1315,33 @@
       }).addTo(flightMap);
 
       const pathCoords = fixes.map(f => [f.latitude, f.longitude]);
+      const flightColor = (hikeAndFly && hikeAndFly.isHikeAndFly) ? '#2196F3' : '#E74C3C';
       flightPath = L.polyline(pathCoords, {
-        color: '#E74C3C',
+        color: flightColor,
         weight: 3,
-        opacity: 0.7
+        opacity: 0.8
       }).addTo(flightMap);
+
+      if (hikeAndFly && hikeAndFly.isHikeAndFly && hikeAndFly.hikeSegments && hikeAndFly.hikeSegments.length > 0) {
+        hikeLayer = L.layerGroup();
+        hikeAndFly.hikeSegments.forEach(segment => {
+          if (segment.length < 2) return;
+          const segCoords = segment.map(f => [f.latitude, f.longitude]);
+          L.polyline(segCoords, {
+            color: '#8B4513',
+            weight: 3,
+            opacity: 0.8
+          }).addTo(hikeLayer);
+        });
+        hikeLayer.addTo(flightMap);
+
+        if (hikeAndFly.flightFixes && hikeAndFly.flightFixes.length > 1) {
+          const flightOnlyCoords = hikeAndFly.flightFixes.map(f => [f.latitude, f.longitude]);
+          flightPath.setLatLngs(flightOnlyCoords);
+        }
+      } else {
+        hikeLayer = null;
+      }
 
       ascentLayer = L.layerGroup();
       descentLayer = L.layerGroup();
@@ -1278,6 +1411,7 @@
           L.DomEvent.disableClickPropagation(container);
 
           const items = [
+            { key: 'hike', label: 'Caminhada',      color: '#8B4513' },
             { key: 'xc',   label: 'Triangulo XC',  color: '#9b59b6' },
             { key: 'up',   label: 'Ascendencia',    color: '#c39bd3' },
             { key: 'down', label: 'Descendencia',   color: '#f1948a' }
@@ -1301,7 +1435,13 @@
               dot.style.opacity = active ? '0.3' : '1';
               label.style.color = active ? '#555' : '#d4d4d4';
 
-              if (item.key === 'xc') {
+              if (item.key === 'hike') {
+                if (active) {
+                  if (hikeLayer) flightMap.removeLayer(hikeLayer);
+                } else {
+                  if (hikeLayer) hikeLayer.addTo(flightMap);
+                }
+              } else if (item.key === 'xc') {
                 if (active) {
                   if (xcTriangleLayer) flightMap.removeLayer(xcTriangleLayer);
                   if (xcTurnpointsLayer) flightMap.removeLayer(xcTurnpointsLayer);

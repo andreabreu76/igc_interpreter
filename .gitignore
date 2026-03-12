@@ -4,3 +4,5 @@ uploads/
 CLAUDE.md
 .claude/
 .env
+.idea
+elevation-cache.json
