@@ -3,6 +3,7 @@ const express = require('express');
 const multer = require('multer');
 const fs = require('fs').promises;
 const IGCParser = require('igc-parser');
+const { detectHikeAndFly, calculateTotalMetrics } = require('./hike-detection');
 
 const app = express();
 const upload = multer({ dest: 'uploads/' });
@@ -126,6 +127,30 @@ app.post('/upload', upload.single('igcFile'), async (req, res) => {
       console.error(error.stack);
     }
 
+    let hikeAndFly = null;
+    try {
+      const hikeResult = await detectHikeAndFly(igcData.fixes);
+      if (hikeResult.isHikeAndFly) {
+        const totalMetrics = calculateTotalMetrics(igcData.fixes, hikeResult.hikeMetrics, summary);
+        hikeAndFly = {
+          isHikeAndFly: true,
+          hikeMetrics: hikeResult.hikeMetrics,
+          totalMetrics,
+          hikeFixes: hikeResult.hikeFixes,
+          flightFixes: hikeResult.flightFixes,
+          hikeSegments: hikeResult.hikeSegments,
+          terrainElevations: hikeResult.terrainElevations
+        };
+      } else if (hikeResult.terrainElevations) {
+        hikeAndFly = {
+          isHikeAndFly: false,
+          terrainElevations: hikeResult.terrainElevations
+        };
+      }
+    } catch (error) {
+      console.error('Hike and Fly detection error:', error.message);
+    }
+
     const flightInfo = {
       pilot: igcData.pilot,
       copilot: igcData.copilot,
@@ -142,6 +167,7 @@ app.post('/upload', upload.single('igcFile'), async (req, res) => {
       task: igcData.task,
       summary,
       xcScore,
+      hikeAndFly,
       fixes: igcData.fixes
     };
 
