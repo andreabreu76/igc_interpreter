@@ -11,19 +11,32 @@ const upload = multer({ dest: 'uploads/' });
 app.use(express.static('public'));
 
 app.post('/upload', upload.single('igcFile'), async (req, res) => {
+  res.setHeader('Content-Type', 'application/x-ndjson');
+  res.setHeader('Transfer-Encoding', 'chunked');
+
+  function sendPhase(message) {
+    res.write(JSON.stringify({ phase: message }) + '\n');
+  }
+
   try {
+    sendPhase('Lendo arquivo IGC...');
     const fileContent = await fs.readFile(req.file.path, 'utf-8');
+
+    sendPhase('Parseando coordenadas...');
     const igcData = IGCParser.parse(fileContent);
 
     if (!igcData.fixes || igcData.fixes.length === 0) {
       await fs.unlink(req.file.path);
-      return res.status(400).json({ error: 'No GPS fixes found in IGC file' });
+      res.write(JSON.stringify({ error: 'No GPS fixes found in IGC file' }) + '\n');
+      return res.end();
     }
 
+    sendPhase(`${igcData.fixes.length} fixes encontrados, calculando resumo do voo...`);
     const summary = calculateFlightSummary(igcData.fixes, igcData);
 
     let xcScore = null;
     try {
+      sendPhase('Calculando score XC...');
       const { solver, scoringRules } = await import('igc-xc-score');
 
       const customMultipliers = {
@@ -128,8 +141,12 @@ app.post('/upload', upload.single('igcFile'), async (req, res) => {
     }
 
     let hikeAndFly = null;
+    let fixStates = null;
     try {
-      const hikeResult = await detectHikeAndFly(igcData.fixes);
+      sendPhase('Consultando elevacao do terreno...');
+      const hikeResult = await detectHikeAndFly(igcData.fixes, sendPhase);
+      fixStates = hikeResult.states;
+      sendPhase('Classificando segmentos hike/fly...');
       if (hikeResult.isHikeAndFly) {
         const totalMetrics = calculateTotalMetrics(igcData.fixes, hikeResult.hikeMetrics, summary);
         hikeAndFly = {
@@ -151,6 +168,12 @@ app.post('/upload', upload.single('igcFile'), async (req, res) => {
       console.error('Hike and Fly detection error:', error.message);
     }
 
+    sendPhase('Montando resultado...');
+    const enrichedFixes = igcData.fixes.map((fix, i) => {
+      const rawState = fixStates ? fixStates[i] : 'flight';
+      return { ...fix, state: rawState === 'ground' ? 'hike' : 'fly' };
+    });
+
     const flightInfo = {
       pilot: igcData.pilot,
       copilot: igcData.copilot,
@@ -158,25 +181,27 @@ app.post('/upload', upload.single('igcFile'), async (req, res) => {
       registration: igcData.registration,
       callsign: igcData.callsign,
       date: igcData.date,
-      fixes: igcData.fixes.length,
-      firstFix: igcData.fixes[0],
-      lastFix: igcData.fixes[igcData.fixes.length - 1],
-      maxAltitude: Math.max(...igcData.fixes.map(f => f.gpsAltitude || 0)),
-      minAltitude: Math.min(...igcData.fixes.map(f => f.gpsAltitude || 0)),
-      duration: calculateDuration(igcData.fixes),
+      fixes: enrichedFixes.length,
+      firstFix: enrichedFixes[0],
+      lastFix: enrichedFixes[enrichedFixes.length - 1],
+      maxAltitude: Math.max(...enrichedFixes.map(f => f.gpsAltitude || 0)),
+      minAltitude: Math.min(...enrichedFixes.map(f => f.gpsAltitude || 0)),
+      duration: calculateDuration(enrichedFixes),
       task: igcData.task,
       summary,
       xcScore,
       hikeAndFly,
-      fixes: igcData.fixes
+      fixes: enrichedFixes
     };
 
     await fs.unlink(req.file.path);
 
-    res.json(flightInfo);
+    res.write(JSON.stringify({ result: flightInfo }) + '\n');
+    res.end();
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: error.message });
+    res.write(JSON.stringify({ error: error.message }) + '\n');
+    res.end();
   }
 });
 

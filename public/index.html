@@ -154,6 +154,8 @@
       line-height: 1.6;
     }
 
+
+
     .loading {
       text-align: center;
       padding: 20px;
@@ -365,7 +367,7 @@
     </div>
 
     <div class="error" id="error"></div>
-    <div class="loading" id="loading">Processando (inclui consulta de elevacao do terreno)...</div>
+    <div class="loading" id="loading">Processando...<br><span id="loadingPhase" style="color: #4ec9b0; font-size: 12px;"></span></div>
 
     <div class="output-container" id="summaryContainer">
       <div class="output-header" id="summaryHeader">
@@ -736,6 +738,8 @@
       chartContainer.classList.remove('show');
       mapContainer.classList.remove('show');
       outputContainer.classList.remove('show');
+      const loadingPhase = document.getElementById('loadingPhase');
+      loadingPhase.textContent = '';
       loading.classList.add('show');
       stopAnimation();
 
@@ -745,9 +749,40 @@
           body: formData
         });
 
-        const data = await response.json();
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let data = null;
+        let errorMsg = null;
 
-        if (response.ok) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop();
+          for (const line of lines) {
+            if (!line.trim()) continue;
+            const msg = JSON.parse(line);
+            if (msg.phase) {
+              loadingPhase.textContent = msg.phase;
+            } else if (msg.result) {
+              data = msg.result;
+            } else if (msg.error) {
+              errorMsg = msg.error;
+            }
+          }
+        }
+
+        if (buffer.trim()) {
+          const msg = JSON.parse(buffer);
+          if (msg.result) data = msg.result;
+          if (msg.error) errorMsg = msg.error;
+        }
+
+        if (errorMsg) {
+          showError(errorMsg);
+        } else if (data) {
           flightData = data;
 
           updateSummary(data.summary, data.date, file.name);
@@ -792,7 +827,7 @@
           outputHeader.classList.remove('collapsed');
           output.classList.remove('collapsed');
         } else {
-          showError(data.error || 'Erro ao processar arquivo');
+          showError('Resposta vazia do servidor');
         }
       } catch (error) {
         showError(error.message);
@@ -1358,8 +1393,8 @@
         if (altDiff > 0) marker.addTo(ascentLayer); else marker.addTo(descentLayer);
       }
 
-      ascentLayer.addTo(flightMap);
-      descentLayer.addTo(flightMap);
+
+
 
       const startIcon = L.divIcon({
         className: 'start-marker',
@@ -1420,14 +1455,15 @@
           items.forEach(item => {
             const row = L.DomUtil.create('div', '', container);
             row.style.cssText = 'display:flex;align-items:center;gap:6px;cursor:pointer;padding:2px 0;';
-            row.dataset.active = 'true';
+            const startActive = item.key !== 'up' && item.key !== 'down';
+            row.dataset.active = startActive ? 'true' : 'false';
 
             const dot = L.DomUtil.create('span', '', row);
-            dot.style.cssText = `display:inline-block;width:10px;height:10px;border-radius:50%;background:${item.color};flex-shrink:0;`;
+            dot.style.cssText = `display:inline-block;width:10px;height:10px;border-radius:50%;background:${item.color};flex-shrink:0;opacity:${startActive ? '1' : '0.3'};`;
 
             const label = L.DomUtil.create('span', '', row);
             label.textContent = item.label;
-            label.style.color = '#d4d4d4';
+            label.style.color = startActive ? '#d4d4d4' : '#555';
 
             row.onclick = function() {
               const active = row.dataset.active === 'true';

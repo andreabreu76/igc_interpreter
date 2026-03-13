@@ -65,7 +65,7 @@ async function fetchElevations(locations) {
   return data.results;
 }
 
-async function getTerrainElevations(fixes, sampleIntervalSeconds = 10) {
+async function getTerrainElevations(fixes, sampleIntervalSeconds = 10, onProgress) {
   const cache = loadCache();
   const sampled = [];
   let lastTimestamp = -Infinity;
@@ -92,7 +92,11 @@ async function getTerrainElevations(fixes, sampleIntervalSeconds = 10) {
     }
   }
 
+  const cached = sampled.length - uncached.length;
+
   if (uncached.length > 0) {
+    if (onProgress) onProgress(`Elevacao: ${cached} pontos no cache, ${uncached.length} pendentes da API...`);
+
     const batches = [];
     for (let i = 0; i < uncached.length; i += MAX_LOCATIONS_PER_REQUEST) {
       batches.push(uncached.slice(i, i + MAX_LOCATIONS_PER_REQUEST));
@@ -100,6 +104,8 @@ async function getTerrainElevations(fixes, sampleIntervalSeconds = 10) {
 
     for (let b = 0; b < batches.length; b++) {
       if (b > 0) await sleep(REQUEST_DELAY_MS);
+
+      if (onProgress) onProgress(`Elevacao: consultando API batch ${b + 1}/${batches.length}...`);
 
       const batch = batches[b];
       const results = await fetchElevations(batch.map(p => ({ lat: p.lat, lng: p.lng })));
@@ -114,6 +120,8 @@ async function getTerrainElevations(fixes, sampleIntervalSeconds = 10) {
     }
 
     saveCache(cache);
+  } else {
+    if (onProgress) onProgress(`Elevacao: todos os ${cached} pontos encontrados no cache`);
   }
 
   const result = new Array(fixes.length);
