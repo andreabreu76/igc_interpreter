@@ -155,8 +155,8 @@ function calculateTotalMetrics(fixes, hikeMetrics, flightSummary) {
   };
 }
 
-async function detectHikeAndFly(fixes) {
-  const terrainElevations = await getTerrainElevations(fixes);
+async function detectHikeAndFly(fixes, onProgress) {
+  const terrainElevations = await getTerrainElevations(fixes, 10, onProgress);
   const states = classifyFixes(fixes, terrainElevations);
   const { hikeFixes, flightFixes, hikeSegments } = splitTracklog(fixes, states);
 
