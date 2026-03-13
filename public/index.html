@@ -435,6 +435,14 @@
           <div class="summary-label">Ganho de Altitude</div>
           <div class="summary-value" id="altitudeGain">-<span class="summary-unit">m</span></div>
         </div>
+        <div class="summary-item">
+          <div class="summary-label">Max Vario</div>
+          <div class="summary-value" id="maxVario">-<span class="summary-unit">m/s</span></div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-label">Min Vario</div>
+          <div class="summary-value" id="minVario">-<span class="summary-unit">m/s</span></div>
+        </div>
       </div>
     </div>
 
@@ -912,6 +920,10 @@
         `${summary.flightTime}<span class="summary-unit">min</span>`;
       document.getElementById('altitudeGain').innerHTML =
         `${summary.altitudeGain}<span class="summary-unit">m</span>`;
+      document.getElementById('maxVario').innerHTML =
+        `${summary.maxVario}<span class="summary-unit">m/s</span>`;
+      document.getElementById('minVario').innerHTML =
+        `${summary.minVario}<span class="summary-unit">m/s</span>`;
     }
 
     function updateScores(xcScore) {
